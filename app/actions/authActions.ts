@@ -12,7 +12,6 @@ export async function onLogout() {
 }
 
 export interface SafeUser {
-    id: string;
     name: string;
     email: string;
     phone: string;
@@ -31,7 +30,6 @@ export async function validateSession(): Promise<SafeUser | null> {
         if (!user) return null;
 
         return {
-            id: user.id,
             name: user.name,
             email: user.email,
             phone: user.phone
