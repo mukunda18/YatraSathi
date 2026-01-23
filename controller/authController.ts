@@ -25,7 +25,7 @@ export async function handleLogin(email: string, password: string) {
             useAuthStore.setState(response.user);
         }
     } catch (error) {
-
+        console.error(error);
     }
     finally {
         useAuthStore.setState({ connecting: false });
@@ -33,6 +33,6 @@ export async function handleLogin(email: string, password: string) {
 }
 
 export async function handleLogout() {
+    useAuthStore.setState({ name: "", email: "", phone: "" });
     await onLogout();
-    useAuthStore.setState({ name: "", email: "" });
 }

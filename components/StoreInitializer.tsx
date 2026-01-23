@@ -3,11 +3,11 @@
 import { useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 
-export default function StoreInitializer({ user }: { user: { name: string, email: string } | undefined }) {
+export default function StoreInitializer({ user }: { user: { name: string, email: string, phone: string } | undefined }) {
     const initialized = useRef(false);
 
     if (!initialized.current && user) {
-        useAuthStore.setState({ name: user.name, email: user.email });
+        useAuthStore.setState({ name: user.name, email: user.email, phone: user.phone });
         initialized.current = true;
     }
 
