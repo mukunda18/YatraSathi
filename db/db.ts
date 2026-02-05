@@ -1,120 +1,820 @@
 import { pool } from "./index";
 
-export interface user {
+export interface User {
     id: string;
     name: string;
     email: string;
-    passwordhash: string;
+    password_hash: string;
     phone: string;
     avg_rating: number;
+    total_ratings: number;
+    is_driver: boolean;
     created_at: Date;
+    updated_at: Date;
 }
 
-export interface driver {
+export interface Driver {
     id: string;
     user_id: string;
     vehicle_number: string;
     vehicle_type: string;
+    vehicle_info: any;
     license_number: string;
     avg_rating: number;
+    total_ratings: number;
+    status: string;
+    created_at: Date;
+    updated_at: Date;
+}
+
+
+export interface Trip {
+    id: string;
+    driver_id: string;
+    from_location: string;
+    from_address: string;
+    to_location: string;
+    to_address: string;
+    route_id: string | null;
+    travel_date: Date;
+    fare_per_seat: number;
+    total_seats: number;
+    available_seats: number;
+    description: string | null;
+    status: string;
+    cancelled_at: Date | null;
+    cancelled_reason: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface TripStop {
+    id: string;
+    trip_id: string;
+    stop_location: string;
+    stop_address: string;
+    stop_order: number;
     created_at: Date;
 }
 
-export type TableName = "users" | "drivers";
+export interface RideRequest {
+    id: string;
+    rider_id: string;
+    trip_id: string;
+    pickup_location: string;
+    pickup_address: string;
+    drop_location: string;
+    drop_address: string;
+    seats: number;
+    total_fare: number;
+    status: string;
+    created_at: Date;
+    updated_at: Date;
+}
+
+export interface LiveTrip {
+    trip_id: string;
+    driver_id: string;
+    current_location: string;
+    heading: number | null;
+    speed_kmph: number | null;
+    last_updated: Date;
+}
+
+export interface LiveUser {
+    user_id: string;
+    current_location: string;
+    status: string;
+    last_updated: Date;
+}
+
+export interface Route {
+    id: string;
+    geom: string;
+    buffer_100: string;
+    bbox: string;
+    start_point: string;
+    end_point: string;
+    length_m: number;
+    created_at: Date;
+}
+
+
+export type TableName =
+    | "users"
+    | "drivers"
+    | "trips"
+    | "ride_requests"
+    | "live_trips"
+    | "live_users"
+    | "routes";
 
 export const query = (text: string, params?: any[]) => pool.query(text, params);
 
-export const initDb = async () => {
-    const usersTable = `
-        CREATE TABLE IF NOT EXISTS users (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            passwordhash TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            avg_rating NUMERIC DEFAULT 5.0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
+// ============================================================================
+// USER QUERIES
+// ============================================================================
 
-    const driversTable = `
-        CREATE TABLE IF NOT EXISTS drivers (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            vehicle_number TEXT NOT NULL UNIQUE,
-            vehicle_type TEXT NOT NULL,
-            license_number TEXT NOT NULL UNIQUE,
-            avg_rating NUMERIC DEFAULT 5.0,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
+export const createUser = async (data: {
+    name: string;
+    email: string;
+    password_hash: string;
+    phone: string;
+    is_driver?: boolean;
+}): Promise<User | undefined> => {
+    const sql = `
+        INSERT INTO users (name, email, password_hash, phone, is_driver)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
     `;
-
     try {
-        await query(usersTable);
-        console.log("Users table initialized");
-        await query(driversTable);
-        console.log("Drivers table initialized");
+        const res = await query(sql, [
+            data.name,
+            data.email,
+            data.password_hash,
+            data.phone,
+            data.is_driver ?? false
+        ]);
+        return res.rows[0];
     } catch (error) {
-        console.error("Error initializing database:", error);
+        console.error('Error creating user:', error);
+        return;
     }
 };
 
-export const addRow = async <T>(tableName: TableName, data: Partial<T>): Promise<T | undefined> => {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
+export const getUserById = async (id: string): Promise<User | undefined> => {
+    const sql = `SELECT * FROM users WHERE id = $1;`;
+    try {
+        const res = await query(sql, [id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting user by id:', error);
+        return;
+    }
+};
 
-    if (keys.length === 0) throw new Error("Data cannot be empty.");
+export const getUserByEmail = async (email: string): Promise<User | undefined> => {
+    const sql = `SELECT * FROM users WHERE email = $1;`;
+    try {
+        const res = await query(sql, [email]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting user by email:', error);
+        return;
+    }
+};
 
-    const columns = keys.join(", ");
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
-    const sql = `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders}) RETURNING *;`;
+export const getUserByPhone = async (phone: string): Promise<User | undefined> => {
+    const sql = `SELECT * FROM users WHERE phone = $1;`;
+    try {
+        const res = await query(sql, [phone]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting user by phone:', error);
+        return;
+    }
+};
+
+export const updateUserById = async (id: string, data: {
+    name?: string;
+    email?: string;
+    password_hash?: string;
+    phone?: string;
+    is_driver?: boolean;
+}): Promise<User | undefined> => {
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (data.name !== undefined) {
+        updates.push(`name = $${paramIndex++}`);
+        values.push(data.name);
+    }
+    if (data.email !== undefined) {
+        updates.push(`email = $${paramIndex++}`);
+        values.push(data.email);
+    }
+    if (data.password_hash !== undefined) {
+        updates.push(`password_hash = $${paramIndex++}`);
+        values.push(data.password_hash);
+    }
+    if (data.phone !== undefined) {
+        updates.push(`phone = $${paramIndex++}`);
+        values.push(data.phone);
+    }
+    if (data.is_driver !== undefined) {
+        updates.push(`is_driver = $${paramIndex++}`);
+        values.push(data.is_driver);
+    }
+
+    if (updates.length === 0) return;
+
+    values.push(id);
+    const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *;`;
 
     try {
         const res = await query(sql, values);
         return res.rows[0];
     } catch (error) {
-        console.error(`Error adding row to ${tableName}:`, error);
+        console.error('Error updating user:', error);
         return;
     }
 };
 
-export const getRow = async <T>(tableName: TableName, selectors: Partial<T>): Promise<T | undefined> => {
-    const keys = Object.keys(selectors);
-    const values = Object.values(selectors);
-
-    if (keys.length === 0) throw new Error("Selectors cannot be empty.");
-
-    const where = keys.map((key, i) => `${key} = $${i + 1}`).join(" AND ");
-    const sql = `SELECT * FROM ${tableName} WHERE ${where} LIMIT 1;`;
-
+export const deleteUserById = async (id: string): Promise<boolean> => {
+    const sql = `DELETE FROM users WHERE id = $1;`;
     try {
-        const res = await query(sql, values);
-        return res.rows[0];
-    } catch (error) {
-        console.error(`Error getting row from ${tableName}:`, error);
-        return;
-    }
-};
-
-export const deleteRows = async <T>(tableName: TableName, selectors: Partial<T>): Promise<boolean> => {
-    const keys = Object.keys(selectors);
-    const values = Object.values(selectors);
-
-    if (keys.length === 0) throw new Error("Selectors cannot be empty.");
-
-    const where = keys.map((key, i) => `${key} = $${i + 1}`).join(" AND ");
-    const sql = `DELETE FROM ${tableName} WHERE ${where};`;
-
-    try {
-        const res = await query(sql, values);
+        const res = await query(sql, [id]);
         return (res.rowCount ?? 0) > 0;
     } catch (error) {
-        console.error(`Error deleting rows from ${tableName}:`, error);
+        console.error('Error deleting user:', error);
         return false;
     }
 };
 
-export const addUser = (data: Partial<user>) => addRow<user>("users", data);
-export const getUser = (selectors: Partial<user>) => getRow<user>("users", selectors);
-export const addDriver = (data: Partial<driver>) => addRow<driver>("drivers", data);
-export const getDriver = (selectors: Partial<driver>) => getRow<driver>("drivers", selectors);
+// ============================================================================
+// DRIVER QUERIES
+// ============================================================================
+
+export const createDriver = async (data: {
+    user_id: string;
+    vehicle_number: string;
+    vehicle_type: string;
+    license_number: string;
+    vehicle_info?: any;
+}): Promise<Driver | undefined> => {
+    const sql = `
+        INSERT INTO drivers (user_id, vehicle_number, vehicle_type, license_number, vehicle_info)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+    `;
+    try {
+        const res = await query(sql, [
+            data.user_id,
+            data.vehicle_number,
+            data.vehicle_type,
+            data.license_number,
+            data.vehicle_info ?? null
+        ]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error creating driver:', error);
+        return;
+    }
+};
+
+export const getDriverById = async (id: string): Promise<Driver | undefined> => {
+    const sql = `SELECT * FROM drivers WHERE id = $1;`;
+    try {
+        const res = await query(sql, [id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting driver by id:', error);
+        return;
+    }
+};
+
+export const getDriverByUserId = async (user_id: string): Promise<Driver | undefined> => {
+    const sql = `SELECT * FROM drivers WHERE user_id = $1;`;
+    try {
+        const res = await query(sql, [user_id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting driver by user_id:', error);
+        return;
+    }
+};
+
+export const updateDriverStatus = async (id: string, status: string): Promise<Driver | undefined> => {
+    const sql = `UPDATE drivers SET status = $1 WHERE id = $2 RETURNING *;`;
+    try {
+        const res = await query(sql, [status, id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error updating driver status:', error);
+        return;
+    }
+};
+
+export const deleteDriverById = async (id: string): Promise<boolean> => {
+    const sql = `DELETE FROM drivers WHERE id = $1;`;
+    try {
+        const res = await query(sql, [id]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error deleting driver:', error);
+        return false;
+    }
+};
+
+// ============================================================================
+// TRIP QUERIES
+// ============================================================================
+
+export const createTrip = async (data: {
+    driver_id: string;
+    from_location: string;
+    from_address: string;
+    to_location: string;
+    to_address: string;
+    travel_date: Date;
+    fare_per_seat: number;
+    total_seats: number;
+    route?: string | null;
+    route_id?: string | null;
+    description?: string | null;
+    stops?: { location: string; address: string; order: number }[];
+}): Promise<Trip | undefined> => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        let routeId = data.route_id;
+
+        if (data.route) {
+            const routeSql = `
+                INSERT INTO routes (geom, buffer_100, bbox, start_point, end_point, length_m)
+                VALUES (
+                    ST_GeogFromText($1),
+                    ST_Buffer(ST_GeogFromText($1), 100),
+                    ST_Envelope(ST_GeogFromText($1)::geometry)::geography,
+                    ST_StartPoint(ST_GeogFromText($1)::geometry)::geography,
+                    ST_EndPoint(ST_GeogFromText($1)::geometry)::geography,
+                    ST_Length(ST_GeogFromText($1))
+                )
+                RETURNING id;
+            `;
+            const routeRes = await client.query(routeSql, [data.route]);
+            routeId = routeRes.rows[0].id;
+        }
+
+        const tripSql = `
+            INSERT INTO trips (
+                driver_id, from_location, from_address, to_location, to_address,
+                travel_date, fare_per_seat, total_seats, available_seats, route_id, description
+            )
+            VALUES ($1, ST_GeogFromText($2), $3, ST_GeogFromText($4), $5, $6, $7, $8, $8, $9, $10)
+            RETURNING 
+                id, driver_id, 
+                ST_AsText(from_location) as from_location, from_address,
+                ST_AsText(to_location) as to_location, to_address,
+                route_id,
+                travel_date, fare_per_seat, total_seats, available_seats,
+                description, status, cancelled_at, cancelled_reason,
+                created_at, updated_at;
+        `;
+
+        const tripRes = await client.query(tripSql, [
+            data.driver_id,
+            data.from_location,
+            data.from_address,
+            data.to_location,
+            data.to_address,
+            data.travel_date,
+            data.fare_per_seat,
+            data.total_seats,
+            routeId ?? null,
+            data.description ?? null
+        ]);
+
+        const trip = tripRes.rows[0];
+
+        if (data.stops && data.stops.length > 0) {
+            for (const stop of data.stops) {
+                const stopSql = `
+                    INSERT INTO trip_stops (trip_id, stop_location, stop_address, stop_order)
+                    VALUES ($1, ST_GeogFromText($2), $3, $4);
+                `;
+                await client.query(stopSql, [trip.id, stop.location, stop.address, stop.order]);
+            }
+        }
+
+        await client.query('COMMIT');
+        return trip;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error creating trip with stops:', error);
+        return;
+    } finally {
+        client.release();
+    }
+};
+
+export const getTripById = async (id: string): Promise<Trip | undefined> => {
+    const sql = `
+        SELECT 
+            id, driver_id, 
+            ST_AsText(from_location) as from_location, from_address,
+            ST_AsText(to_location) as to_location, to_address,
+            route_id,
+            travel_date, fare_per_seat, total_seats, available_seats,
+            description, status, cancelled_at, cancelled_reason,
+            created_at, updated_at
+        FROM trips WHERE id = $1;
+    `;
+    try {
+        const res = await query(sql, [id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting trip by id:', error);
+        return;
+    }
+};
+
+export const getTripsByDriverId = async (driver_id: string): Promise<Trip[]> => {
+    const sql = `
+        SELECT 
+            id, driver_id, 
+            ST_AsText(from_location) as from_location, from_address,
+            ST_AsText(to_location) as to_location, to_address,
+            route_id,
+            travel_date, fare_per_seat, total_seats, available_seats,
+            description, status, cancelled_at, cancelled_reason,
+            created_at, updated_at
+        FROM trips WHERE driver_id = $1
+        ORDER BY travel_date DESC;
+    `;
+    try {
+        const res = await query(sql, [driver_id]);
+        return res.rows;
+    } catch (error) {
+        console.error('Error getting trips by driver_id:', error);
+        return [];
+    }
+};
+
+export const updateTripAvailableSeats = async (id: string, available_seats: number): Promise<Trip | undefined> => {
+    const sql = `
+        UPDATE trips SET available_seats = $1 WHERE id = $2
+        RETURNING 
+            id, driver_id, 
+            ST_AsText(from_location) as from_location, from_address,
+            ST_AsText(to_location) as to_location, to_address,
+            route_id,
+            travel_date, fare_per_seat, total_seats, available_seats,
+            description, status, cancelled_at, cancelled_reason,
+            created_at, updated_at;
+    `;
+    try {
+        const res = await query(sql, [available_seats, id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error updating trip available seats:', error);
+        return;
+    }
+};
+
+export const searchTrips = async (from_location: string, to_location: string): Promise<any[]> => {
+    const sql = `
+        SELECT 
+            t.id, t.driver_id, t.from_address, t.to_address, t.travel_date, t.fare_per_seat, 
+            t.total_seats, t.available_seats, t.description, t.status,
+            u.name as driver_name, u.avg_rating as driver_rating, u.total_ratings as driver_total_ratings,
+            d.vehicle_type, d.vehicle_number, d.vehicle_info,
+            ST_AsText(t.from_location) as from_loc,
+            ST_AsText(t.to_location) as to_loc,
+            ST_AsText(ST_ClosestPoint(r.geom::geometry, ST_GeomFromText($1, 4326))) as pickup_route_point,
+            ST_AsText(ST_ClosestPoint(r.geom::geometry, ST_GeomFromText($2, 4326))) as drop_route_point,
+            ST_AsGeoJSON(r.geom) as route_geojson,
+            COALESCE(
+                (SELECT json_agg(json_build_object(
+                    'id', ts.id,
+                    'address', ts.stop_address, 
+                    'lat', ST_Y(ts.stop_location::geometry),
+                    'lng', ST_X(ts.stop_location::geometry),
+                    'order', ts.stop_order
+                ) ORDER BY ts.stop_order)
+                 FROM trip_stops ts WHERE ts.trip_id = t.id
+                ), '[]'::json
+            ) as stops,
+            COALESCE(
+                (SELECT json_agg(json_build_object(
+                    'name', ru.name,
+                    'pickup_address', rr.pickup_address,
+                    'drop_address', rr.drop_address,
+                    'seats', rr.seats,
+                    'lat', ST_Y(rr.pickup_location::geometry),
+                    'lng', ST_X(rr.pickup_location::geometry)
+                ))
+                 FROM ride_requests rr
+                 JOIN users ru ON rr.rider_id = ru.id
+                 WHERE rr.trip_id = t.id AND rr.status = 'waiting'
+                ), '[]'::json
+            ) as riders
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        JOIN users u ON d.user_id = u.id
+        JOIN routes r ON t.route_id = r.id
+        WHERE ST_Intersects(r.buffer_100, ST_GeogFromText($1))
+          AND ST_Intersects(r.buffer_100, ST_GeogFromText($2))
+          AND ST_LineLocatePoint(r.geom::geometry, ST_GeomFromText($1, 4326)) < ST_LineLocatePoint(r.geom::geometry, ST_GeomFromText($2, 4326))
+          AND t.status = 'scheduled'
+          AND t.available_seats > 0
+          AND t.travel_date > now()
+        ORDER BY t.travel_date ASC;
+    `;
+    try {
+        const res = await pool.query(sql, [from_location, to_location]);
+        return res.rows;
+    } catch (error) {
+        console.error('Error searching trips:', error);
+        return [];
+    }
+};
+
+export const updateTripStatus = async (id: string, status: string, cancelled_reason?: string): Promise<Trip | undefined> => {
+    const sql = `
+        UPDATE trips 
+        SET status = $1, 
+            cancelled_at = CASE WHEN $1 = 'cancelled' THEN now() ELSE cancelled_at END,
+            cancelled_reason = $2
+        WHERE id = $3
+        RETURNING 
+            id, driver_id, 
+            ST_AsText(from_location) as from_location, from_address,
+            ST_AsText(to_location) as to_location, to_address,
+            route_id,
+            travel_date, fare_per_seat, total_seats, available_seats,
+            description, status, cancelled_at, cancelled_reason,
+            created_at, updated_at;
+    `;
+    try {
+        const res = await query(sql, [status, cancelled_reason ?? null, id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error updating trip status:', error);
+        return;
+    }
+};
+
+export const deleteTripById = async (id: string): Promise<boolean> => {
+    const sql = `DELETE FROM trips WHERE id = $1;`;
+    try {
+        const res = await query(sql, [id]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error deleting trip:', error);
+        return false;
+    }
+};
+
+// ============================================================================
+// RIDE REQUEST QUERIES
+// ============================================================================
+
+export const createRideRequest = async (data: {
+    rider_id: string;
+    trip_id: string;
+    pickup_location: string;
+    pickup_address: string;
+    drop_location: string;
+    drop_address: string;
+    seats: number;
+    total_fare: number;
+}): Promise<RideRequest | undefined> => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Check seat availability
+        const tripSql = `SELECT available_seats FROM trips WHERE id = $1 FOR UPDATE`;
+        const tripRes = await client.query(tripSql, [data.trip_id]);
+        if (tripRes.rowCount === 0) throw new Error('Trip not found');
+        if (tripRes.rows[0].available_seats < data.seats) throw new Error('Not enough seats available');
+
+        // 2. Insert request
+        const sql = `
+            INSERT INTO ride_requests (
+                rider_id, trip_id, pickup_location, pickup_address,
+                drop_location, drop_address, seats, total_fare, status
+            )
+            VALUES ($1, $2, ST_GeogFromText($3), $4, ST_GeogFromText($5), $6, $7, $8, 'waiting')
+            RETURNING 
+                id, rider_id, trip_id,
+                ST_AsText(pickup_location) as pickup_location, pickup_address,
+                ST_AsText(drop_location) as drop_location, drop_address,
+                seats, total_fare, status, created_at, updated_at;
+        `;
+        const res = await client.query(sql, [
+            data.rider_id,
+            data.trip_id,
+            data.pickup_location,
+            data.pickup_address,
+            data.drop_location,
+            data.drop_address,
+            data.seats,
+            data.total_fare
+        ]);
+
+        // 3. Update trip seats
+        const updateTripSql = `UPDATE trips SET available_seats = available_seats - $1 WHERE id = $2`;
+        await client.query(updateTripSql, [data.seats, data.trip_id]);
+
+        await client.query('COMMIT');
+        return res.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error creating ride request:', error);
+        return;
+    } finally {
+        client.release();
+    }
+};
+
+export const getRideRequestById = async (id: string): Promise<RideRequest | undefined> => {
+    const sql = `
+        SELECT 
+            id, rider_id, trip_id,
+            ST_AsText(pickup_location) as pickup_location, pickup_address,
+            ST_AsText(drop_location) as drop_location, drop_address,
+            seats, total_fare, status, created_at, updated_at
+        FROM ride_requests WHERE id = $1;
+    `;
+    try {
+        const res = await query(sql, [id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting ride request by id:', error);
+        return;
+    }
+};
+
+export const getRideRequestsByTripId = async (trip_id: string): Promise<RideRequest[]> => {
+    const sql = `
+        SELECT 
+            id, rider_id, trip_id,
+            ST_AsText(pickup_location) as pickup_location, pickup_address,
+            ST_AsText(drop_location) as drop_location, drop_address,
+            seats, total_fare, status, created_at, updated_at
+        FROM ride_requests WHERE trip_id = $1
+        ORDER BY created_at DESC;
+    `;
+    try {
+        const res = await query(sql, [trip_id]);
+        return res.rows;
+    } catch (error) {
+        console.error('Error getting ride requests by trip_id:', error);
+        return [];
+    }
+};
+
+export const getRideRequestsByRiderId = async (rider_id: string): Promise<RideRequest[]> => {
+    const sql = `
+        SELECT 
+            id, rider_id, trip_id,
+            ST_AsText(pickup_location) as pickup_location, pickup_address,
+            ST_AsText(drop_location) as drop_location, drop_address,
+            seats, total_fare, status, created_at, updated_at
+        FROM ride_requests WHERE rider_id = $1
+        ORDER BY created_at DESC;
+    `;
+    try {
+        const res = await query(sql, [rider_id]);
+        return res.rows;
+    } catch (error) {
+        console.error('Error getting ride requests by rider_id:', error);
+        return [];
+    }
+};
+
+export const deleteRideRequestById = async (id: string): Promise<boolean> => {
+    const sql = `DELETE FROM ride_requests WHERE id = $1;`;
+    try {
+        const res = await query(sql, [id]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error deleting ride request:', error);
+        return false;
+    }
+};
+
+// ============================================================================
+// LIVE TRIP QUERIES
+// ============================================================================
+
+export const upsertLiveTrip = async (data: {
+    trip_id: string;
+    driver_id: string;
+    current_location: string;
+    heading?: number | null;
+    speed_kmph?: number | null;
+}): Promise<LiveTrip | undefined> => {
+    const sql = `
+        INSERT INTO live_trips (trip_id, driver_id, current_location, heading, speed_kmph)
+        VALUES ($1, $2, ST_GeogFromText($3), $4, $5)
+        ON CONFLICT (trip_id)
+        DO UPDATE SET 
+            current_location = EXCLUDED.current_location,
+            heading = EXCLUDED.heading,
+            speed_kmph = EXCLUDED.speed_kmph,
+            last_updated = now()
+        RETURNING 
+            trip_id, driver_id,
+            ST_AsText(current_location) as current_location,
+            heading, speed_kmph, last_updated;
+    `;
+    try {
+        const res = await query(sql, [
+            data.trip_id,
+            data.driver_id,
+            data.current_location,
+            data.heading ?? null,
+            data.speed_kmph ?? null
+        ]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error upserting live trip:', error);
+        return;
+    }
+};
+
+export const getLiveTripByTripId = async (trip_id: string): Promise<LiveTrip | undefined> => {
+    const sql = `
+        SELECT 
+            trip_id, driver_id,
+            ST_AsText(current_location) as current_location,
+            heading, speed_kmph, last_updated
+        FROM live_trips WHERE trip_id = $1;
+    `;
+    try {
+        const res = await query(sql, [trip_id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting live trip by trip_id:', error);
+        return;
+    }
+};
+
+export const deleteLiveTripByTripId = async (trip_id: string): Promise<boolean> => {
+    const sql = `DELETE FROM live_trips WHERE trip_id = $1;`;
+    try {
+        const res = await query(sql, [trip_id]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error deleting live trip:', error);
+        return false;
+    }
+};
+
+// ============================================================================
+// LIVE USER QUERIES
+// ============================================================================
+
+export const upsertLiveUser = async (data: {
+    user_id: string;
+    current_location: string;
+    status?: string;
+}): Promise<LiveUser | undefined> => {
+    const sql = `
+        INSERT INTO live_users (user_id, current_location, status)
+        VALUES ($1, ST_GeogFromText($2), $3)
+        ON CONFLICT (user_id)
+        DO UPDATE SET 
+            current_location = EXCLUDED.current_location,
+            status = EXCLUDED.status,
+            last_updated = now()
+        RETURNING 
+            user_id,
+            ST_AsText(current_location) as current_location,
+            status, last_updated;
+    `;
+    try {
+        const res = await query(sql, [
+            data.user_id,
+            data.current_location,
+            data.status ?? 'online'
+        ]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error upserting live user:', error);
+        return;
+    }
+};
+
+export const getLiveUserByUserId = async (user_id: string): Promise<LiveUser | undefined> => {
+    const sql = `
+        SELECT 
+            user_id,
+            ST_AsText(current_location) as current_location,
+            status, last_updated
+        FROM live_users WHERE user_id = $1;
+    `;
+    try {
+        const res = await query(sql, [user_id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting live user by user_id:', error);
+        return;
+    }
+};
+
+export const deleteLiveUserByUserId = async (user_id: string): Promise<boolean> => {
+    const sql = `DELETE FROM live_users WHERE user_id = $1;`;
+    try {
+        const res = await query(sql, [user_id]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error deleting live user:', error);
+        return false;
+    }
+};
