@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import TripMap from "./TripMap";
 import { createTripAction } from "@/app/actions/tripActions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card";
 import { HiChatAlt2, HiPaperAirplane, HiPlusCircle } from "react-icons/hi";
-import LocationField from "./LocationField";
 import { useTripCreationStore } from "@/store/tripCreationStore";
-import DepartureSelector from "./DepartureSelector";
-import FareAndSeats from "./FareAndSeats";
+import LocationField from "./ui/LocationField";
+import DepartureSelector from "./ui/DepartureSelector";
+import FareAndSeats from "./ui/FareAndSeats";
+import TripMap from "../map/TripMap";
 
 export default function NewTripForm() {
     const { from, to, fromAddress, toAddress, routeGeometry, stops, addStop, removeStop, clear } = useTripCreationStore();
