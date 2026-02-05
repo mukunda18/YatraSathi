@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { SafeUser } from "@/app/actions/authActions";
 import { HiUser, HiLogout, HiCog, HiTruck, HiChevronDown } from "react-icons/hi";
 import Link from "next/link";
-import Logout from "@/components/Logout";
+import Logout from "@/components/auth/ui/Logout";
 
 interface UserDropdownProps {
     user: SafeUser;

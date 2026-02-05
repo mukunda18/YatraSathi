@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import TripMap from "./TripMap";
+import TripMap from "../map/TripMap";
 import { searchTripsAction } from "@/app/actions/searchActions";
 import { toast } from "sonner";
 import Card from "@/components/UI/Card";
 import { HiSearch, HiUserGroup, HiClock, HiLocationMarker } from "react-icons/hi";
-import LocationField from "./LocationField";
+import LocationField from "./ui/LocationField";
 import { useTripSearchStore } from "@/store/tripSearchStore";
-import TripResultCard from "./TripResultCard";
-import TripInfo from "./TripInfo";
+import TripResultCard from "./ui/TripResultCard";
+import TripInfo from "./ui/TripInfo";
 
 export default function TripSearchForm() {
     const {

@@ -1,5 +1,5 @@
 import { validateSession } from "@/app/actions/authActions";
-import StoreInitializer from "@/components/StoreInitializer";
+import StoreInitializer from "@/components/auth/ui/StoreInitializer";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/landing/Hero";
 
