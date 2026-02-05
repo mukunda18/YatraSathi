@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { handleLogin } from "@/controller/authController";
+import { loginAction } from "@/app/actions/authActions";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { validateLogin } from "@/utils/validation";
 import { toast } from "sonner";
 import { HiMail, HiLockClosed, HiEye, HiEyeOff } from "react-icons/hi";
 import Input from "@/components/UI/Input";
@@ -22,90 +21,60 @@ export default function LoginForm() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        useAuthStore.setState({ connecting: true });
 
-        const validation = validateLogin({ email, password });
-        if (!validation.success) {
-            setErrors(validation.errors || {});
-            toast.error("Please fix the errors in the form", { id: "login-validation-error" });
-            return;
-        }
+        const result = await loginAction({ email, password });
 
-        setErrors({});
-        await handleLogin(email, password);
-
-        if (useAuthStore.getState().name) {
-            toast.success(`Welcome back, ${useAuthStore.getState().name}!`, { id: "login-success" });
+        if (result.success && result.user) {
+            useAuthStore.setState({ ...result.user, connecting: false });
+            toast.success(`Welcome back, ${result.user.name}!`);
             router.push("/");
         } else {
-            toast.error("Invalid credentials. Please try again.", { id: "login-error" });
+            setErrors(result.errors || {});
+            toast.error(result.message || "Invalid credentials");
+            useAuthStore.setState({ connecting: false });
         }
     };
 
     return (
-        <Card className="p-8">
+        <Card className="p-8 md:p-10 border border-white/10 bg-slate-900/40 backdrop-blur-2xl shadow-2xl">
             <form className="space-y-6" onSubmit={handleSubmit}>
                 <Input
-                    id="email"
+                    label="Email Address"
                     type="email"
-                    label="Email address"
-                    icon={<HiMail className="h-5 w-5" />}
+                    icon={<HiMail className="w-5 h-5" />}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     error={errors.email}
                     placeholder="you@example.com"
                 />
 
-                <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    label="Password"
-                    icon={<HiLockClosed className="h-5 w-5" />}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    error={errors.password}
-                    placeholder="••••••••"
-                    rightElement={
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-slate-500 hover:text-indigo-400 transition-colors"
-                        >
-                            {showPassword ? <HiEyeOff className="h-5 w-5" /> : <HiEye className="h-5 w-5" />}
+                <div className="space-y-2">
+                    <Input
+                        label="Password"
+                        type={showPassword ? "text" : "password"}
+                        icon={<HiLockClosed className="w-5 h-5" />}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        error={errors.password}
+                        placeholder="••••••••"
+                        rightElement={
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-indigo-400 transition-colors">
+                                {showPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                            </button>
+                        }
+                    />
+                    <div className="text-right">
+                        <button type="button" className="text-xs font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
+                            Forgot Password?
                         </button>
-                    }
-                />
-
-                <div className="text-right -mt-4">
-                    <button type="button" className="text-xs font-medium text-slate-500 hover:text-indigo-400 transition-colors">
-                        Forgot password?
-                    </button>
+                    </div>
                 </div>
 
-                <Button
-                    type="submit"
-                    fullWidth
-                    loading={connecting}
-                    icon={<svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
-                >
-                    Login
+                <Button type="submit" fullWidth loading={connecting} className="mt-4">
+                    Sign In
                 </Button>
             </form>
-
-            <div className="mt-10">
-                <div className="text-center">
-                    <span className="text-xs font-bold tracking-widest uppercase text-slate-500">First time here?</span>
-                </div>
-
-                <div className="mt-8">
-                    <Button
-                        variant="secondary"
-                        fullWidth
-                        onClick={() => router.push("/signup")}
-                    >
-                        Signup
-                    </Button>
-                </div>
-            </div>
         </Card>
     );
 }

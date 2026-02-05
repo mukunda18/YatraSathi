@@ -1,5 +1,8 @@
+"use client";
+
 import { SafeUser } from "@/app/actions/authActions";
-import Logout from "@/components/Logout";
+import UserDropdown from "@/components/layout/UserDropdown";
+import Link from "next/link";
 
 interface NavbarProps {
     user: SafeUser | null;
@@ -7,49 +10,47 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
     return (
-        <nav className="sticky top-0 z-50 animate-in fade-in slide-in-from-top-4 duration-1000">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-                <div className="rounded-3xl border border-white/10 bg-white/3 backdrop-blur-xl px-6 h-16 flex items-center justify-between shadow-2xl">
-                    <div className="flex items-center gap-3">
-                        <div className="rounded-xl bg-indigo-600 p-2 shadow-[0_0_20px_rgba(79,70,229,0.3)]">
+        <nav className="fixed top-0 left-0 right-0 z-50 p-6">
+            <div className="mx-auto max-w-7xl">
+                <div className="glass-card rounded-3xl px-8 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-3">
+                        <div className="rounded-xl bg-indigo-600 p-2 shadow-lg shadow-indigo-500/20">
                             <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
                         </div>
-                        <span className="text-2xl font-black bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                        <span className="text-2xl font-black tracking-tight text-white italic">
                             YatraSathi
                         </span>
-                    </div>
+                    </Link>
 
                     <div className="flex items-center gap-6">
                         {user ? (
-                            <div className="flex items-center gap-6">
-                                <div className="hidden sm:block text-right">
-                                    <p className="text-sm font-bold text-white tracking-tight">{user.name}</p>
-                                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Active Account</p>
-                                    </div>
+                            <div className="flex items-center gap-8">
+                                <div className="hidden md:flex items-center gap-6">
+                                    <Link href="/trips" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                                        Find Rides
+                                    </Link>
+                                    {user.isDriver ? (
+                                        <Link href="/trips/new" className="text-xs font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors">
+                                            Offer Ride
+                                        </Link>
+                                    ) : (
+                                        <Link href="/driver/register" className="text-xs font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">
+                                            Become Driver
+                                        </Link>
+                                    )}
                                 </div>
-                                <div className="h-10 w-10 rounded-2xl bg-indigo-600/20 flex items-center justify-center text-indigo-400 font-black border border-indigo-500/20 shadow-inner">
-                                    {user.name.charAt(0).toUpperCase()}
-                                </div>
-                                <Logout />
+                                <UserDropdown user={user} />
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
-                                <a
-                                    href="/login"
-                                    className="hidden sm:block text-sm font-bold text-slate-400 hover:text-white transition-colors px-4"
-                                >
+                                <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white px-4 transition-colors">
                                     Login
-                                </a>
-                                <a
-                                    href="/signup"
-                                    className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-black text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:bg-indigo-500 transition-all active:scale-95"
-                                >
+                                </Link>
+                                <Link href="/signup" className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all">
                                     Signup
-                                </a>
+                                </Link>
                             </div>
                         )}
                     </div>

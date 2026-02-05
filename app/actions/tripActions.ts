@@ -1,0 +1,96 @@
+"use server";
+
+import { createTrip, getDriverByUserId, createRideRequest } from "@/db/db";
+import { getUserId } from "./authActions";
+import { validateTrip } from "@/utils/validation";
+
+export async function createTripAction(data: {
+    from_location: { lat: number; lng: number };
+    from_address: string;
+    to_location: { lat: number; lng: number };
+    to_address: string;
+    travel_date: string;
+    fare_per_seat: number;
+    total_seats: number;
+    description?: string;
+    stops?: { location: { lat: number; lng: number }; address: string }[];
+    route?: [number, number][];
+}) {
+    const userId = await getUserId();
+    if (!userId) {
+        return { success: false, message: "Unauthorized" };
+    }
+
+    const driver = await getDriverByUserId(userId);
+    if (!driver) {
+        return { success: false, message: "Driver profile not found. Please register as a driver first." };
+    }
+
+    const validation = validateTrip(data);
+    if (!validation.success) {
+        return { success: false, message: Object.values(validation.errors || {})[0] };
+    }
+
+    const fromPoint = `POINT(${data.from_location.lng} ${data.from_location.lat})`;
+    const toPoint = `POINT(${data.to_location.lng} ${data.to_location.lat})`;
+
+    const trip = await createTrip({
+        driver_id: driver.id,
+        from_location: fromPoint,
+        from_address: data.from_address,
+        to_location: toPoint,
+        to_address: data.to_address,
+        travel_date: new Date(data.travel_date),
+        fare_per_seat: Number(data.fare_per_seat),
+        total_seats: Number(data.total_seats),
+        description: data.description,
+        stops: data.stops?.map((stop, index) => ({
+            location: `POINT(${stop.location.lng} ${stop.location.lat})`,
+            address: stop.address,
+            order: index + 1
+        })),
+        route: data.route ? `LINESTRING(${data.route.map(p => `${p[0]} ${p[1]}`).join(',')})` : undefined
+    });
+
+    if (!trip) {
+        return { success: false, message: "Failed to create trip" };
+    }
+
+    return { success: true, tripId: trip.id };
+}
+
+export async function createRideRequestAction(data: {
+    trip_id: string;
+    pickup_location: { lat: number; lng: number };
+    pickup_address: string;
+    drop_location: { lat: number; lng: number };
+    drop_address: string;
+    seats: number;
+    total_fare: number;
+}) {
+    const userId = await getUserId();
+    if (!userId) {
+        return { success: false, message: "Unauthorized" };
+    }
+
+    const pickupPoint = `POINT(${data.pickup_location.lng} ${data.pickup_location.lat})`;
+    const dropPoint = `POINT(${data.drop_location.lng} ${data.drop_location.lat})`;
+
+    const request = await createRideRequest({
+        rider_id: userId,
+        trip_id: data.trip_id,
+        pickup_location: pickupPoint,
+        pickup_address: data.pickup_address,
+        drop_location: dropPoint,
+        drop_address: data.drop_address,
+        seats: data.seats,
+        total_fare: data.total_fare
+    });
+
+    if (!request) {
+        return { success: false, message: "Failed to create ride request. You might already have a request for this trip." };
+    }
+
+    return { success: true, requestId: request.id };
+}
+

@@ -1,46 +1,51 @@
-import { InputHTMLAttributes, ReactNode } from "react";
+"use client";
+
+import { InputHTMLAttributes, ReactNode, forwardRef } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
-    icon?: ReactNode;
     error?: string;
+    icon?: ReactNode;
     rightElement?: ReactNode;
 }
 
-export default function Input({
+const Input = forwardRef<HTMLInputElement, InputProps>(({
     label,
-    icon,
     error,
+    icon,
     rightElement,
     className = "",
-    id,
     ...props
-}: InputProps) {
+}, ref) => {
     return (
-        <div className="space-y-2">
+        <div className="w-full space-y-2">
             {label && (
-                <label htmlFor={id} className="block text-xs font-bold uppercase tracking-widest text-indigo-400">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
                     {label}
                 </label>
             )}
             <div className="relative group">
                 {icon && (
-                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-500 group-focus-within:text-indigo-400 transition-colors">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400">
                         {icon}
                     </div>
                 )}
                 <input
-                    id={id}
-                    className={`block w-full rounded-2xl border-0 bg-white/5 py-4 ${icon ? "pl-12" : "pl-5"} ${rightElement ? "pr-12" : "pr-5"} text-white shadow-inner ring-1 ring-inset ${error ? 'ring-red-500/50' : 'ring-white/10'} placeholder-slate-500 focus:bg-white/10 focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-all outline-none ${className}`}
+                    ref={ref}
+                    className={`glass-input w-full rounded-2xl py-3.5 px-5 ${icon ? "pl-11" : ""} ${rightElement ? "pr-11" : ""} text-sm outline-none ${className}`}
                     {...props}
                 />
                 {rightElement && (
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         {rightElement}
                     </div>
                 )}
             </div>
-            {error && <p className="mt-2 text-xs text-red-400 font-semibold animate-in fade-in slide-in-from-top-1">{error}</p>}
+            {error && <p className="text-xs text-red-500 ml-1 font-medium">{error}</p>}
         </div>
     );
-}
+});
+
+Input.displayName = "Input";
+
+export default Input;

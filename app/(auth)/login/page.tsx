@@ -1,27 +1,35 @@
+"use client";
+
 import LoginForm from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
     return (
-        <div className="relative flex min-h-full flex-col justify-center py-12 px-6 lg:px-8">
+        <div className="relative min-h-screen flex items-center justify-center py-20 px-6 overflow-hidden bg-bg-dark">
             {/* Background Decorative Elements */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-full max-w-[800px] bg-indigo-600/20 blur-[120px] rounded-full -z-10 pointer-events-none" />
-
-            <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-                <div className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 p-3 shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-transform hover:scale-105">
-                    <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                </div>
-                <h1 className="mt-8 text-4xl font-black tracking-tight text-white sm:text-5xl">
-                    Welcome <span className="text-indigo-500">Back</span>
-                </h1>
-                <p className="mt-3 text-slate-400 font-medium">
-                    Secure access to your journey.
-                </p>
+            <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10">
+                <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/20 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 blur-[150px] rounded-full" />
             </div>
 
-            <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
+            <div className="w-full max-w-md relative z-10">
+                <div className="text-center mb-10">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-indigo-600 shadow-xl shadow-indigo-500/20 mb-6 italic text-white font-black text-3xl">
+                        Y
+                    </div>
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-4">
+                        Welcome <span className="text-indigo-500">Back</span>
+                    </h1>
+                    <p className="text-slate-400 font-medium">
+                        Log in to continue your adventure.
+                    </p>
+                </div>
+
                 <LoginForm />
+
+                <p className="text-center mt-8 text-xs text-slate-500 font-bold uppercase tracking-widest leading-loose">
+                    New to YatraSathi?{" "}
+                    <a href="/signup" className="text-indigo-400 hover:text-indigo-300 transition-colors">Create Account</a>
+                </p>
             </div>
         </div>
     );
