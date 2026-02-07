@@ -113,6 +113,10 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
     const routeColor = mode === "search" ? "#3b82f6" : "#6366f1";
     const routeGlowColor = mode === "search" ? "#60a5fa" : "#818cf8";
 
+    // Parse pickup and drop points for search mode
+    const pickupPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.pickup_route_point) : null;
+    const dropPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.drop_route_point) : null;
+
     return (
         <div className={`absolute inset-0 w-full h-full contrast-[1.1] transition-all duration-700 ${activeField ? 'grayscale-0' : 'grayscale-[0.4]'}`}>
             <Map
@@ -192,29 +196,22 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
                         ))}
 
                         {/* Pickup/Drop Points */}
-                        {(() => {
-                            const pickupPoint = parseWKT(selectedTrip.pickup_route_point);
-                            return pickupPoint && (
-                                <IndicatorMarker
-                                    longitude={pickupPoint.lng}
-                                    latitude={pickupPoint.lat}
-                                    label="Route Pickup"
-                                    type="pickup"
-                                />
-                            );
-                        })()}
-
-                        {(() => {
-                            const dropPoint = parseWKT(selectedTrip.drop_route_point);
-                            return dropPoint && (
-                                <IndicatorMarker
-                                    longitude={dropPoint.lng}
-                                    latitude={dropPoint.lat}
-                                    label="Route Dropoff"
-                                    type="drop"
-                                />
-                            );
-                        })()}
+                        {pickupPoint && (
+                            <IndicatorMarker
+                                longitude={pickupPoint.lng}
+                                latitude={pickupPoint.lat}
+                                label="Route Pickup"
+                                type="pickup"
+                            />
+                        )}
+                        {dropPoint && (
+                            <IndicatorMarker
+                                longitude={dropPoint.lng}
+                                latitude={dropPoint.lat}
+                                label="Route Dropoff"
+                                type="drop"
+                            />
+                        )}
                     </>
                 )}
             </Map>

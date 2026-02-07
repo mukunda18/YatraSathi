@@ -14,7 +14,7 @@ import FareAndSeats from "./ui/FareAndSeats";
 import TripMap from "../map/TripMap";
 
 export default function NewTripForm() {
-    const { from, to, fromAddress, toAddress, routeGeometry, stops, addStop, removeStop, clear } = useTripCreationStore();
+    const { from, to, fromAddress, toAddress, routeGeometry, stops, addStop, removeStop, clear, activeField } = useTripCreationStore();
 
     const [travelYear, setTravelYear] = useState(new Date().getFullYear().toString());
     const [travelMonth, setTravelMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
@@ -106,7 +106,7 @@ export default function NewTripForm() {
                             />
 
                             {stops.map((stop, index) => (
-                                <div key={stop.id} className="relative group/stop animate-slide-down">
+                                <div key={stop.id} className={`relative group/stop animate-slide-down ${activeField === stop.id ? 'z-50' : 'z-0'}`}>
                                     <LocationField
                                         mode="plan"
                                         type={stop.id}
@@ -175,7 +175,7 @@ export default function NewTripForm() {
                             disabled={!isReady}
                             className={`mt-6 py-3.5 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] ${isReady ? "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20" : "bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-white/5"}`}
                         >
-                            {loading ? "Publishing..." : isReady ? "Publish Journey" : "Verify All Locations"}
+                            {loading ? "Publishing..." : isReady ? "Publish Journey" : "Fill all fields"}
                         </Button>
                     </Card>
                 </form>
