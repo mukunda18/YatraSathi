@@ -3,9 +3,15 @@
 import { useUserRidesStore } from "@/store/userRidesStore";
 import Link from "next/link";
 import { HiClock, HiLocationMarker, HiArrowRight, HiRefresh } from "react-icons/hi";
+import { useEffect } from "react";
+import TripListSkeleton from "../skeletons/TripListSkeleton";
 
 export default function UserRidesList() {
     const { trips, isLoading, fetchTrips } = useUserRidesStore();
+
+    useEffect(() => {
+        fetchTrips();
+    }, [fetchTrips]);
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -25,6 +31,10 @@ export default function UserRidesList() {
             default: return "bg-slate-500";
         }
     };
+
+    if (isLoading && trips.length === 0) {
+        return <TripListSkeleton />;
+    }
 
     return (
         <div>
@@ -46,7 +56,7 @@ export default function UserRidesList() {
             </div>
 
             {trips.length === 0 ? (
-                <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-6 text-center">
+                <div className="h-[32vh] bg-slate-900/30 border border-white/5 rounded-2xl p-6 text-center flex flex-col items-center justify-center">
                     <HiLocationMarker className="w-8 h-8 text-slate-700 mx-auto mb-3" />
                     <p className="text-xs text-slate-500 mb-3">No joined trips</p>
                     <Link href="/trips/join" className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-400 hover:text-indigo-300">
@@ -54,8 +64,8 @@ export default function UserRidesList() {
                     </Link>
                 </div>
             ) : (
-                <div className="space-y-2">
-                    {trips.slice(0, 3).map((trip: any) => (
+                <div className="h-[32vh] overflow-y-auto pr-2 modern-scrollbar space-y-2">
+                    {trips.map((trip: any) => (
                         <Link
                             key={trip.request_id}
                             href={`/trips/${trip.trip_id}`}

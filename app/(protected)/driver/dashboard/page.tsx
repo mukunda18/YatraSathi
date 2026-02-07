@@ -1,9 +1,8 @@
 import { validateSession } from "@/app/actions/authActions";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import BackButton from "@/components/UI/BackButton";
 import DriverTripsList from "@/components/driver/DriverTripsList";
-import { HiArrowLeft } from "react-icons/hi";
 
 export const metadata = {
     title: "Driver Dashboard | YatraSathi",
@@ -26,10 +25,7 @@ export default async function DriverDashboardPage() {
             <div className="absolute top-0 right-0 h-[600px] w-full max-w-[800px] bg-purple-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
 
             <div className="max-w-5xl mx-auto px-6 py-12">
-                <Link href="/" prefetch={true} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-white transition-colors mb-8">
-                    <HiArrowLeft className="w-4 h-4" />
-                    Back to Home
-                </Link>
+                <BackButton label="Back to Home" className="mb-8" />
 
                 <header className="mb-8">
                     <h1 className="text-3xl font-black text-white tracking-tight mb-2">

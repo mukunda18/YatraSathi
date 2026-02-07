@@ -207,7 +207,7 @@ export default function NewTripForm() {
                 onMapClick={handleMapClick}
             />
 
-            <div className="absolute top-8 left-8 w-full max-w-sm z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">
+            <div className="absolute top-8 left-8 w-full max-w-sm z-10 max-h-[calc(100vh-4rem)] overflow-y-auto modern-scrollbar pr-2">
                 <form onSubmit={handleSubmit} className="space-y-3 pb-8">
                     <Card className="p-5 border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card transition-all duration-500 hover:border-indigo-500/20">
                         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-indigo-500/10 blur-[60px] rounded-full transition-all duration-700 group-hover/card:bg-indigo-500/20" />

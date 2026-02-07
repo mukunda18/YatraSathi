@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
 import { TripSearchResult, TripLocation } from "@/store/types";
 import { useUserRidesStore } from "@/store/userRidesStore";
+import { useAuthStore } from "@/store/authStore";
 
 interface TripInfoProps {
     selectedTrip: TripSearchResult | null;
@@ -21,6 +22,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
     const [loading, setLoading] = useState(false);
     const [seats, setSeats] = useState(1);
     const router = useRouter();
+    const { userId } = useAuthStore();
 
     if (!selectedTrip) return null;
 
@@ -40,6 +42,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
 
     const vehicleModel = vehicle_info?.model || vehicle_type;
     const vehicleColor = vehicle_info?.color || "";
+    const isOwnTrip = selectedTrip.driver_user_id === userId;
 
     const handleJoin = async () => {
         if (!selectedTrip || !from || !to) {
@@ -209,11 +212,13 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
                     </div>
                     <button
                         onClick={handleJoin}
-                        disabled={loading || available_seats === 0}
+                        disabled={loading || available_seats === 0 || isOwnTrip}
                         className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         {loading ? (
                             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : isOwnTrip ? (
+                            "You are the driver"
                         ) : (
                             <>
                                 Request to Join

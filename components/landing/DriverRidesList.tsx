@@ -4,10 +4,18 @@ import { useDriverRidesStore } from "@/store/driverRidesStore";
 import { useAuthStore } from "@/store/authStore";
 import Link from "next/link";
 import { HiClock, HiPlusCircle, HiArrowRight, HiRefresh } from "react-icons/hi";
+import { useEffect } from "react";
+import TripListSkeleton from "../skeletons/TripListSkeleton";
 
 export default function DriverRidesList() {
     const { trips, isLoading, fetchTrips } = useDriverRidesStore();
     const { isDriver } = useAuthStore();
+
+    useEffect(() => {
+        if (isDriver) {
+            fetchTrips();
+        }
+    }, [fetchTrips, isDriver]);
 
     if (!isDriver) return null;
 
@@ -19,6 +27,10 @@ export default function DriverRidesList() {
             minute: "2-digit"
         });
     };
+
+    if (isLoading && trips.length === 0) {
+        return <TripListSkeleton />;
+    }
 
     return (
         <div>
@@ -40,7 +52,7 @@ export default function DriverRidesList() {
             </div>
 
             {trips.length === 0 ? (
-                <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-6 text-center">
+                <div className="h-[32vh] bg-slate-900/30 border border-white/5 rounded-2xl p-6 text-center flex flex-col items-center justify-center">
                     <HiPlusCircle className="w-8 h-8 text-slate-700 mx-auto mb-3" />
                     <p className="text-xs text-slate-500 mb-3">No trips offered</p>
                     <Link href="/trips/new" className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300">
@@ -48,12 +60,12 @@ export default function DriverRidesList() {
                     </Link>
                 </div>
             ) : (
-                <div className="space-y-2">
-                    {trips.slice(0, 3).map((trip: any) => (
+                <div className="h-[32vh] overflow-y-auto pr-2 modern-scrollbar space-y-2">
+                    {trips.map((trip: any) => (
                         <Link
                             key={trip.trip_id}
-                            href={`/driver/dashboard`}
-                            className="block bg-slate-900/30 border border-white/5 rounded-xl p-4 hover:border-emerald-500/20 hover:bg-emerald-500/5 transition-all group"
+                            href={`/trips/${trip.trip_id}`}
+                            className="block bg-slate-900/40 border border-white/5 rounded-xl p-4 hover:border-emerald-500/20 hover:bg-emerald-500/5 transition-all group"
                         >
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2">

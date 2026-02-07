@@ -51,9 +51,7 @@ export default function LocationField({
     const isActive = activeField === type;
 
     useEffect(() => {
-        if (storeAddress !== undefined) {
-            setInputValue(storeAddress || "");
-        }
+        setInputValue(storeAddress || "");
     }, [storeAddress]);
 
     useEffect(() => {
@@ -181,9 +179,18 @@ export default function LocationField({
 
     const handleInputChange = (val: string) => {
         setInputValue(val);
-        if (type === "from") setFromAddress(val);
-        else if (type === "to") setToAddress(val);
-        else updateStop(type, { address: val, lat: 0, lng: 0 });
+
+        // When typing manually, nullify the verified location object
+        // so the "Unverified" badge appears and stays until a suggestion is picked or map used.
+        if (type === "from") {
+            setFrom(null);
+            setFromAddress(val);
+        } else if (type === "to") {
+            setTo(null);
+            setToAddress(val);
+        } else {
+            updateStop(type, { address: val, lat: 0, lng: 0 });
+        }
 
         fetchSuggestions(val);
         setShowDropdown(true);
