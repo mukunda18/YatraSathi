@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import Overlay from "../UI/Overlay";
 import Card from "../UI/Card";
 
+import Link from "next/link";
+
 interface TripCardProps {
     trip: any;
     onUpdate: () => void;
@@ -115,7 +117,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
             <div className={`bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden ${isLoading ? "opacity-50 pointer-events-none" : ""}`}>
                 <div className="p-5">
                     <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
+                        <Link href={`/trips/${trip.trip_id}`} className="flex-1 group/link">
                             <div className="flex items-center gap-3 mb-2">
                                 <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-widest ${getStatusColor(trip.trip_status)}`}>
                                     {trip.trip_status}
@@ -127,12 +129,28 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                 )}
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                                <HiLocationMarker className="w-4 h-4 text-indigo-400 shrink-0" />
-                                <span className="text-white font-bold truncate">{trip.from_address.split(",")[0]}</span>
+                                <HiLocationMarker className="w-4 h-4 text-indigo-400 shrink-0 group-hover/link:scale-110 transition-transform" />
+                                <span className="text-white font-bold truncate group-hover/link:text-indigo-400 transition-colors">{trip.from_address.split(",")[0]}</span>
                                 <span className="text-slate-600">→</span>
-                                <span className="text-white font-bold truncate">{trip.to_address.split(",")[0]}</span>
+                                <span className="text-white font-bold truncate group-hover/link:text-indigo-400 transition-colors">{trip.to_address.split(",")[0]}</span>
                             </div>
-                        </div>
+
+                            <div className="flex items-center gap-4 text-xs text-slate-500 mt-4">
+                                <span className="flex items-center gap-1">
+                                    <HiClock className="w-3.5 h-3.5" />
+                                    {formatDate(trip.travel_date)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <HiCurrencyRupee className="w-3.5 h-3.5" />
+                                    {trip.fare_per_seat}/seat
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <HiUsers className="w-3.5 h-3.5" />
+                                    {trip.available_seats}/{trip.total_seats} available
+                                </span>
+                            </div>
+                        </Link>
+
                         {trip.trip_status === "scheduled" && (
                             <button
                                 onClick={() => setShowCancelModal(true)}
@@ -142,21 +160,6 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                 <HiX className="w-4 h-4" />
                             </button>
                         )}
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
-                        <span className="flex items-center gap-1">
-                            <HiClock className="w-3.5 h-3.5" />
-                            {formatDate(trip.travel_date)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <HiCurrencyRupee className="w-3.5 h-3.5" />
-                            {trip.fare_per_seat}/seat
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <HiUsers className="w-3.5 h-3.5" />
-                            {trip.available_seats}/{trip.total_seats} available
-                        </span>
                     </div>
 
                     <button

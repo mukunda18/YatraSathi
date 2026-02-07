@@ -12,12 +12,13 @@ import RiderMarker from "./ui/RiderMarker";
 import IndicatorMarker from "./ui/IndicatorMarker";
 
 interface TripMapProps {
-    mode?: "plan" | "search";
-    from: TripLocation | null;
-    to: TripLocation | null;
+    mode?: "plan" | "search" | "view";
+    from?: TripLocation | null;
+    to?: TripLocation | null;
     stops?: StopLocation[];
-    routeGeometry: [number, number][] | null;
+    routeGeometry?: [number, number][] | null;
     selectedTrip?: TripSearchResult | null;
+    trip?: any | null;
     activeField?: "from" | "to" | string | null;
     onMapClick?: (lat: number, lng: number) => void;
 }
@@ -29,6 +30,7 @@ export default function TripMap({
     stops = [],
     routeGeometry,
     selectedTrip = null,
+    trip = null,
     activeField = null,
     onMapClick
 }: TripMapProps) {
@@ -38,6 +40,42 @@ export default function TripMap({
         zoom: 13
     });
 
+    useEffect(() => {
+        let coords: { lat: number, lng: number }[] = [];
+
+        if (mode === 'view' && trip) {
+            coords.push({ lat: trip.from_lat, lng: trip.from_lng });
+            coords.push({ lat: trip.to_lat, lng: trip.to_lng });
+            trip.stops?.forEach((s: any) => coords.push({ lat: s.lat, lng: s.lng }));
+        } else if (from && to) {
+            coords.push({ lat: from.lat, lng: from.lng });
+            coords.push({ lat: to.lat, lng: to.lng });
+            stops.forEach(s => coords.push({ lat: s.lat, lng: s.lng }));
+        }
+
+        if (coords.length > 1) {
+            const lats = coords.map(c => c.lat);
+            const lngs = coords.map(c => c.lng);
+            const minLat = Math.min(...lats);
+            const maxLat = Math.max(...lats);
+            const minLng = Math.min(...lngs);
+            const maxLng = Math.max(...lngs);
+
+            const newLat = (minLat + maxLat) / 2;
+            const newLng = (minLng + maxLng) / 2;
+
+            // Only update if coordinates significantly changed or initial state
+            if (Math.abs(viewState.latitude - newLat) > 0.0001 ||
+                Math.abs(viewState.longitude - newLng) > 0.0001) {
+                setViewState(prev => ({
+                    ...prev,
+                    latitude: newLat,
+                    longitude: newLng,
+                    zoom: 12
+                }));
+            }
+        }
+    }, [mode, trip?.id, trip?.from_lat, trip?.from_lng, from?.lat, from?.lng, to?.lat, to?.lng, stops.length]);
 
     const handleMapClick = (e: any) => {
         if (!activeField || !onMapClick) return;
@@ -45,9 +83,25 @@ export default function TripMap({
         onMapClick(lat, lng);
     };
 
-    const displayRoute = routeGeometry;
-    const routeColor = mode === "search" ? "#3b82f6" : "#6366f1";
-    const routeGlowColor = mode === "search" ? "#60a5fa" : "#818cf8";
+    let displayRoute = routeGeometry;
+    let routeColor = "#6366f1";
+    let routeGlowColor = "#818cf8";
+
+    if (mode === "search") {
+        routeColor = "#3b82f6";
+        routeGlowColor = "#60a5fa";
+    }
+
+    if (mode === "view" && trip?.route_geojson) {
+        try {
+            const geojson = JSON.parse(trip.route_geojson);
+            displayRoute = geojson.coordinates;
+            routeColor = "#10b981";
+            routeGlowColor = "#34d399";
+        } catch (e) {
+            console.error("Failed to parse route geojson", e);
+        }
+    }
 
     const pickupPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.pickup_route_point) : null;
     const dropPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.drop_route_point) : null;
@@ -71,7 +125,37 @@ export default function TripMap({
                     />
                 )}
 
-                {from && (
+                {/* Markers for View View */}
+                {mode === 'view' && trip && (
+                    <>
+                        <TripMarker
+                            longitude={trip.from_lng}
+                            latitude={trip.from_lat}
+                            label="A"
+                            type="start"
+                            address={trip.from_address}
+                        />
+                        <TripMarker
+                            longitude={trip.to_lng}
+                            latitude={trip.to_lat}
+                            label="B"
+                            type="end"
+                            address={trip.to_address}
+                        />
+                        {trip.stops?.map((stop: any, index: number) => (
+                            <TripMarker
+                                key={`stop-${stop.id}`}
+                                longitude={stop.lng}
+                                latitude={stop.lat}
+                                label={index + 1}
+                                type="stop"
+                            />
+                        ))}
+                    </>
+                )}
+
+                {/* Existing Markers for Plan/Search */}
+                {mode !== 'view' && from && (
                     <TripMarker
                         longitude={from.lng}
                         latitude={from.lat}
@@ -82,7 +166,7 @@ export default function TripMap({
                     />
                 )}
 
-                {to && (
+                {mode !== 'view' && to && (
                     <TripMarker
                         longitude={to.lng}
                         latitude={to.lat}

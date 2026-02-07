@@ -7,7 +7,6 @@
 
 @layer base {
 
-    /* Hide number input spinners */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -60,6 +59,28 @@
     .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
+    }
+
+    .modern-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .modern-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .modern-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+
+    .modern-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .modern-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
     }
 }
 

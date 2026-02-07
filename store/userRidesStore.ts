@@ -1,34 +1,36 @@
 import { create } from "zustand";
 import { getJoinedTripsAction } from "@/app/actions/tripActions";
 
-interface UserRide {
+export interface UserTrip {
     request_id: string;
-    trip_id: string;
     request_status: string;
+    requested_seats: number;
     pickup_address: string;
     drop_address: string;
-    travel_date: string;
-    seats: number;
     total_fare: number;
+    trip_id: string;
+    from_address: string;
+    to_address: string;
+    travel_date: string;
+    trip_status: string;
+    driver_name: string;
+    driver_rating: number;
+    vehicle_type: string;
+    vehicle_number: string;
 }
 
 interface UserRidesStore {
-    trips: UserRide[];
+    trips: UserTrip[];
     isLoading: boolean;
     lastFetched: number | null;
-    setTrips: (trips: UserRide[]) => void;
-    setLoading: (loading: boolean) => void;
     fetchTrips: () => Promise<void>;
     clear: () => void;
 }
 
-export const useUserRidesStore = create<UserRidesStore>((set, get) => ({
+export const useUserRidesStore = create<UserRidesStore>((set) => ({
     trips: [],
     isLoading: false,
     lastFetched: null,
-
-    setTrips: (trips) => set({ trips, lastFetched: Date.now() }),
-    setLoading: (isLoading) => set({ isLoading }),
 
     fetchTrips: async () => {
         set({ isLoading: true });
@@ -38,7 +40,7 @@ export const useUserRidesStore = create<UserRidesStore>((set, get) => ({
                 set({ trips: result.trips || [], lastFetched: Date.now() });
             }
         } catch (error) {
-            console.error("Failed to fetch user rides:", error);
+            console.error("Failed to fetch user trips:", error);
         } finally {
             set({ isLoading: false });
         }

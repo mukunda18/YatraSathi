@@ -9,14 +9,20 @@ export interface StopLocation extends TripLocation {
 }
 
 export interface TripRider {
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
+    request_id: string;
+    rider_id: string;
+    rider_name: string;
+    rider_phone: string;
+    pickup_address: string;
+    drop_address: string;
+    seats: number;
+    total_fare: number;
+    status: string;
 }
 
 export interface TripSearchResult {
     id: string;
+    driver_user_id: string;
     driver_name: string;
     driver_rating?: number;
     driver_total_ratings?: number;
@@ -36,6 +42,47 @@ export interface TripSearchResult {
     riders?: TripRider[];
     pickup_route_point?: string;
     drop_route_point?: string;
+}
+
+export interface TripViewData {
+    trip_id: string;
+    from_address: string;
+    to_address: string;
+    travel_date: string;
+    fare_per_seat: number;
+    total_seats: number;
+    available_seats: number;
+    description: string | null;
+    trip_status: string;
+    from_lat: number;
+    from_lng: number;
+    to_lat: number;
+    to_lng: number;
+    driver_user_id: string;
+    driver_name: string;
+    driver_phone: string;
+    driver_rating: string | number;
+    driver_id: string;
+    vehicle_type: string;
+    vehicle_number: string;
+    vehicle_info: any;
+    route_geojson: string | null;
+    stops: {
+        id: string;
+        stop_address: string;
+        stop_order: number;
+        lat: number;
+        lng: number;
+    }[];
+    my_request?: {
+        id: string;
+        status: string;
+        seats: number;
+        total_fare: number;
+        pickup_address: string;
+        drop_address: string;
+    } | null;
+    riders?: TripRider[];
 }
 
 export interface SearchFormContext {
@@ -95,4 +142,3 @@ export interface CreationFormContext {
     setSeats: (seats: number) => void;
     setDescription: (desc: string) => void;
 }
-

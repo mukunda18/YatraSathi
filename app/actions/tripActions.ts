@@ -1,6 +1,6 @@
 "use server";
 
-import { createTrip, getDriverByUserId, createRideRequest, getJoinedTripsByRiderId, getTripDetailsById } from "@/db/db";
+import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getVerifiedDriver, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
 import { getUserId } from "./authActions";
 import { validateTrip } from "@/utils/validation";
 
@@ -21,9 +21,9 @@ export async function createTripAction(data: {
         return { success: false, message: "Unauthorized" };
     }
 
-    const driver = await getDriverByUserId(userId);
+    const driver = await getVerifiedDriver(userId);
     if (!driver) {
-        return { success: false, message: "Driver profile not found. Please register as a driver first." };
+        return { success: false, message: "Driver profile not found or not approved. Please register as a driver first." };
     }
 
     const validation = validateTrip(data);
@@ -73,6 +73,12 @@ export async function createRideRequestAction(data: {
         return { success: false, message: "Unauthorized" };
     }
 
+    // Prevent driver from joining their own trip
+    const tripResult = await getTripViewById(data.trip_id, userId);
+    if (tripResult && tripResult.driver_user_id === userId) {
+        return { success: false, message: "You cannot join your own trip." };
+    }
+
     const pickupPoint = `POINT(${data.pickup_location.lng} ${data.pickup_location.lat})`;
     const dropPoint = `POINT(${data.drop_location.lng} ${data.drop_location.lat})`;
 
@@ -111,13 +117,47 @@ export async function getJoinedTripsAction() {
     return { success: true, trips };
 }
 
-export async function getTripDetailsAction(tripId: string) {
+export async function getTripViewAction(tripId: string) {
     const userId = await getUserId();
 
-    const trip = await getTripDetailsById(tripId, userId || undefined);
+    const trip = await getTripViewById(tripId, userId || undefined);
+
     if (!trip) {
         return { success: false, message: "Trip not found", trip: null };
     }
 
     return { success: true, trip };
+}
+
+export async function cancelTripAction(tripId: string, reason?: string) {
+    const userId = await getUserId();
+    if (!userId) return { success: false, message: "Unauthorized" };
+
+    const trip = await getOwnedTrip(tripId, userId);
+    if (!trip) {
+        return { success: false, message: "You are not authorized to cancel this trip or it does not exist." };
+    }
+
+    const success = await cancelTripById(tripId, reason, trip.driver_id);
+
+    if (success) {
+        return { success: true, message: "Trip cancelled successfully" };
+    }
+
+    return { success: false, message: "Failed to cancel trip" };
+}
+
+export async function cancelRideRequestAction(requestId: string, tripId: string) {
+
+    const userId = await getUserId();
+    if (!userId) return { success: false, message: "Unauthorized" };
+
+    // Pass userId to verify they are the rider
+    const success = await removeRiderFromTrip(requestId, userId);
+
+    if (success) {
+        return { success: true, message: "Booking cancelled successfully" };
+    }
+
+    return { success: false, message: "Failed to cancel booking. You may not be authorized." };
 }

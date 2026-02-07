@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 interface AuthStore {
     connecting: boolean,
+    userId: string,
     name: string,
     email: string,
     phone: string,
@@ -11,9 +12,10 @@ interface AuthStore {
 
 export const useAuthStore = create<AuthStore>((set) => ({
     connecting: false,
+    userId: "",
     name: "",
     email: "",
     phone: "",
     isDriver: false,
-    clearAuth: () => set({ name: "", email: "", phone: "", connecting: false, isDriver: false }),
+    clearAuth: () => set({ userId: "", name: "", email: "", phone: "", connecting: false, isDriver: false }),
 }));

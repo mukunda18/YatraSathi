@@ -187,7 +187,7 @@ export default function TripSearchForm() {
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-5 pb-5 scrollbar-hide space-y-3 border-t border-white/5 pt-4 bg-slate-950/20">
+                    <div className="flex-1 overflow-y-auto px-5 pb-5 modern-scrollbar space-y-3 border-t border-white/5 pt-4 bg-slate-950/20">
                         {loading ? (
                             <div className="space-y-3">
                                 {[1, 2, 3].map((i) => (

@@ -13,6 +13,7 @@ export async function onLogout() {
 }
 
 export interface SafeUser {
+    id: string;
     name: string;
     email: string;
     phone: string;
@@ -32,6 +33,7 @@ export async function validateSession(): Promise<SafeUser | null> {
         if (!user) return null;
 
         return {
+            id: user.id,
             name: user.name,
             email: user.email,
             phone: user.phone,
@@ -74,7 +76,7 @@ export async function signupAction(data: any) {
     await setCookie(profile.id, 60 * 60 * 24 * 7);
     return {
         success: true,
-        user: { name: profile.name, email: profile.email, phone: profile.phone, isDriver: false }
+        user: { id: profile.id, name: profile.name, email: profile.email, phone: profile.phone, isDriver: false }
     };
 }
 
@@ -129,6 +131,6 @@ export async function loginAction(data: any) {
     await setCookie(profile.id, 60 * 60 * 24 * 7);
     return {
         success: true,
-        user: { name: profile.name, email: profile.email, phone: profile.phone, isDriver: profile.is_driver }
+        user: { id: profile.id, name: profile.name, email: profile.email, phone: profile.phone, isDriver: profile.is_driver }
     };
 }

@@ -164,16 +164,6 @@ export const getUserByEmail = async (email: string): Promise<User | undefined> =
     }
 };
 
-export const getUserByPhone = async (phone: string): Promise<User | undefined> => {
-    const sql = `SELECT * FROM users WHERE phone = $1;`;
-    try {
-        const res = await query(sql, [phone]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting user by phone:', error);
-        return;
-    }
-};
 
 export const updateUserById = async (id: string, data: {
     name?: string;
@@ -221,16 +211,6 @@ export const updateUserById = async (id: string, data: {
     }
 };
 
-export const deleteUserById = async (id: string): Promise<boolean> => {
-    const sql = `DELETE FROM users WHERE id = $1;`;
-    try {
-        const res = await query(sql, [id]);
-        return (res.rowCount ?? 0) > 0;
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        return false;
-    }
-};
 
 // ============================================================================
 // DRIVER QUERIES
@@ -263,49 +243,6 @@ export const createDriver = async (data: {
     }
 };
 
-export const getDriverById = async (id: string): Promise<Driver | undefined> => {
-    const sql = `SELECT * FROM drivers WHERE id = $1;`;
-    try {
-        const res = await query(sql, [id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting driver by id:', error);
-        return;
-    }
-};
-
-export const getDriverByUserId = async (user_id: string): Promise<Driver | undefined> => {
-    const sql = `SELECT * FROM drivers WHERE user_id = $1;`;
-    try {
-        const res = await query(sql, [user_id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting driver by user_id:', error);
-        return;
-    }
-};
-
-export const updateDriverStatus = async (id: string, status: string): Promise<Driver | undefined> => {
-    const sql = `UPDATE drivers SET status = $1 WHERE id = $2 RETURNING *;`;
-    try {
-        const res = await query(sql, [status, id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error updating driver status:', error);
-        return;
-    }
-};
-
-export const deleteDriverById = async (id: string): Promise<boolean> => {
-    const sql = `DELETE FROM drivers WHERE id = $1;`;
-    try {
-        const res = await query(sql, [id]);
-        return (res.rowCount ?? 0) > 0;
-    } catch (error) {
-        console.error('Error deleting driver:', error);
-        return false;
-    }
-};
 
 // ============================================================================
 // TRIP QUERIES
@@ -400,76 +337,15 @@ export const createTrip = async (data: {
     }
 };
 
-export const getTripById = async (id: string): Promise<Trip | undefined> => {
-    const sql = `
-        SELECT 
-            id, driver_id, 
-            ST_AsText(from_location) as from_location, from_address,
-            ST_AsText(to_location) as to_location, to_address,
-            route_id,
-            travel_date, fare_per_seat, total_seats, available_seats,
-            description, status, cancelled_at, cancelled_reason,
-            created_at, updated_at
-        FROM trips WHERE id = $1;
-    `;
-    try {
-        const res = await query(sql, [id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting trip by id:', error);
-        return;
-    }
-};
 
-export const getTripsByDriverId = async (driver_id: string): Promise<Trip[]> => {
-    const sql = `
-        SELECT 
-            id, driver_id, 
-            ST_AsText(from_location) as from_location, from_address,
-            ST_AsText(to_location) as to_location, to_address,
-            route_id,
-            travel_date, fare_per_seat, total_seats, available_seats,
-            description, status, cancelled_at, cancelled_reason,
-            created_at, updated_at
-        FROM trips WHERE driver_id = $1
-        ORDER BY travel_date DESC;
-    `;
-    try {
-        const res = await query(sql, [driver_id]);
-        return res.rows;
-    } catch (error) {
-        console.error('Error getting trips by driver_id:', error);
-        return [];
-    }
-};
 
-export const updateTripAvailableSeats = async (id: string, available_seats: number): Promise<Trip | undefined> => {
-    const sql = `
-        UPDATE trips SET available_seats = $1 WHERE id = $2
-        RETURNING 
-            id, driver_id, 
-            ST_AsText(from_location) as from_location, from_address,
-            ST_AsText(to_location) as to_location, to_address,
-            route_id,
-            travel_date, fare_per_seat, total_seats, available_seats,
-            description, status, cancelled_at, cancelled_reason,
-            created_at, updated_at;
-    `;
-    try {
-        const res = await query(sql, [available_seats, id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error updating trip available seats:', error);
-        return;
-    }
-};
 
 export const searchTrips = async (from_location: string, to_location: string): Promise<any[]> => {
     const sql = `
         SELECT 
             t.id, t.driver_id, t.from_address, t.to_address, t.travel_date, t.fare_per_seat, 
             t.total_seats, t.available_seats, t.description, t.status,
-            u.name as driver_name, u.avg_rating as driver_rating, u.total_ratings as driver_total_ratings,
+            u.id as driver_user_id, u.name as driver_name, u.avg_rating as driver_rating, u.total_ratings as driver_total_ratings,
             d.vehicle_type, d.vehicle_number, d.vehicle_info,
             ST_AsText(t.from_location) as from_loc,
             ST_AsText(t.to_location) as to_loc,
@@ -547,16 +423,6 @@ export const updateTripStatus = async (id: string, status: string, cancelled_rea
     }
 };
 
-export const deleteTripById = async (id: string): Promise<boolean> => {
-    const sql = `DELETE FROM trips WHERE id = $1;`;
-    try {
-        const res = await query(sql, [id]);
-        return (res.rowCount ?? 0) > 0;
-    } catch (error) {
-        console.error('Error deleting trip:', error);
-        return false;
-    }
-};
 
 // ============================================================================
 // RIDE REQUEST QUERIES
@@ -621,61 +487,8 @@ export const createRideRequest = async (data: {
     }
 };
 
-export const getRideRequestById = async (id: string): Promise<RideRequest | undefined> => {
-    const sql = `
-        SELECT 
-            id, rider_id, trip_id,
-            ST_AsText(pickup_location) as pickup_location, pickup_address,
-            ST_AsText(drop_location) as drop_location, drop_address,
-            seats, total_fare, status, created_at, updated_at
-        FROM ride_requests WHERE id = $1;
-    `;
-    try {
-        const res = await query(sql, [id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting ride request by id:', error);
-        return;
-    }
-};
 
-export const getRideRequestsByTripId = async (trip_id: string): Promise<RideRequest[]> => {
-    const sql = `
-        SELECT 
-            id, rider_id, trip_id,
-            ST_AsText(pickup_location) as pickup_location, pickup_address,
-            ST_AsText(drop_location) as drop_location, drop_address,
-            seats, total_fare, status, created_at, updated_at
-        FROM ride_requests WHERE trip_id = $1
-        ORDER BY created_at DESC;
-    `;
-    try {
-        const res = await query(sql, [trip_id]);
-        return res.rows;
-    } catch (error) {
-        console.error('Error getting ride requests by trip_id:', error);
-        return [];
-    }
-};
 
-export const getRideRequestsByRiderId = async (rider_id: string): Promise<RideRequest[]> => {
-    const sql = `
-        SELECT 
-            id, rider_id, trip_id,
-            ST_AsText(pickup_location) as pickup_location, pickup_address,
-            ST_AsText(drop_location) as drop_location, drop_address,
-            seats, total_fare, status, created_at, updated_at
-        FROM ride_requests WHERE rider_id = $1
-        ORDER BY created_at DESC;
-    `;
-    try {
-        const res = await query(sql, [rider_id]);
-        return res.rows;
-    } catch (error) {
-        console.error('Error getting ride requests by rider_id:', error);
-        return [];
-    }
-};
 
 export const getJoinedTripsByRiderId = async (rider_id: string): Promise<any[]> => {
     const sql = `
@@ -701,7 +514,7 @@ export const getJoinedTripsByRiderId = async (rider_id: string): Promise<any[]> 
     }
 };
 
-export const getTripDetailsById = async (trip_id: string, rider_id?: string): Promise<any | null> => {
+export const getTripViewById = async (trip_id: string, rider_id?: string): Promise<any | null> => {
     const sql = `
         SELECT 
             t.id as trip_id, t.from_address, t.to_address, t.travel_date, 
@@ -710,7 +523,40 @@ export const getTripDetailsById = async (trip_id: string, rider_id?: string): Pr
             ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
             u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, u.avg_rating as driver_rating,
             d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
-            ST_AsGeoJSON(r.geom) as route_geojson
+            ST_AsGeoJSON(r.geom) as route_geojson,
+            (
+                SELECT COALESCE(json_agg(ts), '[]')
+                FROM (
+                    SELECT id, stop_address, stop_order,
+                           ST_Y(stop_location::geometry) as lat, ST_X(stop_location::geometry) as lng
+                    FROM trip_stops 
+                    WHERE trip_id = t.id 
+                    ORDER BY stop_order
+                ) ts
+            ) as stops,
+            (
+                SELECT COALESCE(json_agg(rd), '[]')
+                FROM (
+                    SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
+                           rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status
+                    FROM ride_requests rr
+                    JOIN users ru ON rr.rider_id = ru.id
+                    WHERE rr.trip_id = t.id AND rr.status = 'accepted'
+                ) rd
+            ) as riders,
+            (
+                SELECT json_build_object(
+                    'id', my_rr.id,
+                    'status', my_rr.status,
+                    'seats', my_rr.seats,
+                    'total_fare', my_rr.total_fare,
+                    'pickup_address', my_rr.pickup_address,
+                    'drop_address', my_rr.drop_address
+                )
+                FROM ride_requests my_rr 
+                WHERE my_rr.trip_id = t.id AND my_rr.rider_id = $2
+                LIMIT 1
+            ) as my_request
         FROM trips t
         JOIN drivers d ON t.driver_id = d.id
         JOIN users u ON d.user_id = u.id
@@ -718,176 +564,42 @@ export const getTripDetailsById = async (trip_id: string, rider_id?: string): Pr
         WHERE t.id = $1;
     `;
     try {
-        const res = await query(sql, [trip_id]);
+        const res = await query(sql, [trip_id, rider_id || null]);
         if (res.rows.length === 0) return null;
 
         const trip = res.rows[0];
 
-        const stopsSql = `
-            SELECT id, stop_address, stop_order,
-                ST_Y(stop_location::geometry) as lat, ST_X(stop_location::geometry) as lng
-            FROM trip_stops WHERE trip_id = $1 ORDER BY stop_order;
-        `;
-        const stopsRes = await query(stopsSql, [trip_id]);
-        trip.stops = stopsRes.rows;
-
-        if (rider_id) {
-            const requestSql = `
-                SELECT id, status, seats, total_fare, pickup_address, drop_address
-                FROM ride_requests WHERE trip_id = $1 AND rider_id = $2;
-            `;
-            const requestRes = await query(requestSql, [trip_id, rider_id]);
-            trip.my_request = requestRes.rows[0] || null;
+        if (trip.my_request && !trip.my_request.id) {
+            trip.my_request = null;
         }
 
         return trip;
     } catch (error) {
-        console.error('Error getting trip details:', error);
+        console.error('Error getting trip view:', error);
         return null;
     }
 };
 
-export const deleteRideRequestById = async (id: string): Promise<boolean> => {
-    const sql = `DELETE FROM ride_requests WHERE id = $1;`;
-    try {
-        const res = await query(sql, [id]);
-        return (res.rowCount ?? 0) > 0;
-    } catch (error) {
-        console.error('Error deleting ride request:', error);
-        return false;
-    }
-};
-
 // ============================================================================
-// LIVE TRIP QUERIES
+// HELPERS
 // ============================================================================
 
-export const upsertLiveTrip = async (data: {
-    trip_id: string;
-    driver_id: string;
-    current_location: string;
-    heading?: number | null;
-    speed_kmph?: number | null;
-}): Promise<LiveTrip | undefined> => {
+export const getOwnedTrip = async (tripId: string, userId: string): Promise<Trip | null> => {
     const sql = `
-        INSERT INTO live_trips (trip_id, driver_id, current_location, heading, speed_kmph)
-        VALUES ($1, $2, ST_GeogFromText($3), $4, $5)
-        ON CONFLICT (trip_id)
-        DO UPDATE SET 
-            current_location = EXCLUDED.current_location,
-            heading = EXCLUDED.heading,
-            speed_kmph = EXCLUDED.speed_kmph,
-            last_updated = now()
-        RETURNING 
-            trip_id, driver_id,
-            ST_AsText(current_location) as current_location,
-            heading, speed_kmph, last_updated;
+        SELECT t.* 
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        WHERE t.id = $1 AND d.user_id = $2;
     `;
     try {
-        const res = await query(sql, [
-            data.trip_id,
-            data.driver_id,
-            data.current_location,
-            data.heading ?? null,
-            data.speed_kmph ?? null
-        ]);
-        return res.rows[0];
+        const res = await query(sql, [tripId, userId]);
+        return res.rows[0] || null;
     } catch (error) {
-        console.error('Error upserting live trip:', error);
-        return;
+        console.error('Error checking trip ownership:', error);
+        return null;
     }
 };
 
-export const getLiveTripByTripId = async (trip_id: string): Promise<LiveTrip | undefined> => {
-    const sql = `
-        SELECT 
-            trip_id, driver_id,
-            ST_AsText(current_location) as current_location,
-            heading, speed_kmph, last_updated
-        FROM live_trips WHERE trip_id = $1;
-    `;
-    try {
-        const res = await query(sql, [trip_id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting live trip by trip_id:', error);
-        return;
-    }
-};
-
-export const deleteLiveTripByTripId = async (trip_id: string): Promise<boolean> => {
-    const sql = `DELETE FROM live_trips WHERE trip_id = $1;`;
-    try {
-        const res = await query(sql, [trip_id]);
-        return (res.rowCount ?? 0) > 0;
-    } catch (error) {
-        console.error('Error deleting live trip:', error);
-        return false;
-    }
-};
-
-// ============================================================================
-// LIVE USER QUERIES
-// ============================================================================
-
-export const upsertLiveUser = async (data: {
-    user_id: string;
-    current_location: string;
-    status?: string;
-}): Promise<LiveUser | undefined> => {
-    const sql = `
-        INSERT INTO live_users (user_id, current_location, status)
-        VALUES ($1, ST_GeogFromText($2), $3)
-        ON CONFLICT (user_id)
-        DO UPDATE SET 
-            current_location = EXCLUDED.current_location,
-            status = EXCLUDED.status,
-            last_updated = now()
-        RETURNING 
-            user_id,
-            ST_AsText(current_location) as current_location,
-            status, last_updated;
-    `;
-    try {
-        const res = await query(sql, [
-            data.user_id,
-            data.current_location,
-            data.status ?? 'online'
-        ]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error upserting live user:', error);
-        return;
-    }
-};
-
-export const getLiveUserByUserId = async (user_id: string): Promise<LiveUser | undefined> => {
-    const sql = `
-        SELECT 
-            user_id,
-            ST_AsText(current_location) as current_location,
-            status, last_updated
-        FROM live_users WHERE user_id = $1;
-    `;
-    try {
-        const res = await query(sql, [user_id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error getting live user by user_id:', error);
-        return;
-    }
-};
-
-export const deleteLiveUserByUserId = async (user_id: string): Promise<boolean> => {
-    const sql = `DELETE FROM live_users WHERE user_id = $1;`;
-    try {
-        const res = await query(sql, [user_id]);
-        return (res.rowCount ?? 0) > 0;
-    } catch (error) {
-        console.error('Error deleting live user:', error);
-        return false;
-    }
-};
 
 // ============================================================================
 // DRIVER DASHBOARD QUERIES
@@ -895,32 +607,32 @@ export const deleteLiveUserByUserId = async (user_id: string): Promise<boolean> 
 
 export const getDriverTripsWithRequests = async (driver_id: string): Promise<any[]> => {
     const sql = `
-        SELECT 
-            t.id as trip_id, t.from_address, t.to_address, t.travel_date, 
-            t.fare_per_seat, t.total_seats, t.available_seats, t.status as trip_status,
-            t.description, t.created_at,
-            COALESCE(
-                json_agg(
-                    json_build_object(
-                        'request_id', rr.id,
-                        'rider_id', rr.rider_id,
-                        'rider_name', u.name,
-                        'rider_phone', u.phone,
-                        'pickup_address', rr.pickup_address,
-                        'drop_address', rr.drop_address,
-                        'seats', rr.seats,
-                        'total_fare', rr.total_fare,
-                        'status', rr.status
-                    )
-                ) FILTER (WHERE rr.id IS NOT NULL), '[]'
-            ) as ride_requests
+SELECT
+t.id as trip_id, t.from_address, t.to_address, t.travel_date,
+    t.fare_per_seat, t.total_seats, t.available_seats, t.status as trip_status,
+    t.description, t.created_at,
+    COALESCE(
+        json_agg(
+            json_build_object(
+                'request_id', rr.id,
+                'rider_id', rr.rider_id,
+                'rider_name', u.name,
+                'rider_phone', u.phone,
+                'pickup_address', rr.pickup_address,
+                'drop_address', rr.drop_address,
+                'seats', rr.seats,
+                'total_fare', rr.total_fare,
+                'status', rr.status
+            )
+        ) FILTER(WHERE rr.id IS NOT NULL), '[]'
+    ) as ride_requests
         FROM trips t
         LEFT JOIN ride_requests rr ON t.id = rr.trip_id
         LEFT JOIN users u ON rr.rider_id = u.id
         WHERE t.driver_id = $1
         GROUP BY t.id
         ORDER BY t.travel_date DESC;
-    `;
+`;
     try {
         const res = await query(sql, [driver_id]);
         return res.rows;
@@ -930,14 +642,21 @@ export const getDriverTripsWithRequests = async (driver_id: string): Promise<any
     }
 };
 
-export const cancelTripById = async (trip_id: string, reason?: string): Promise<boolean> => {
-    const sql = `
+export const cancelTripById = async (trip_id: string, reason?: string, driver_id?: string): Promise<boolean> => {
+    let sql = `
         UPDATE trips 
         SET status = 'cancelled', cancelled_at = now(), cancelled_reason = $2, updated_at = now()
-        WHERE id = $1 AND status = 'scheduled';
+        WHERE id = $1 AND status = 'scheduled'
     `;
+    const params = [trip_id, reason || null];
+
+    if (driver_id) {
+        sql += ` AND driver_id = $3`;
+        params.push(driver_id);
+    }
+
     try {
-        const res = await query(sql, [trip_id, reason || null]);
+        const res = await query(sql, params);
         return (res.rowCount ?? 0) > 0;
     } catch (error) {
         console.error('Error cancelling trip:', error);
@@ -945,12 +664,25 @@ export const cancelTripById = async (trip_id: string, reason?: string): Promise<
     }
 };
 
-export const updateRideRequestStatus = async (request_id: string, status: string, trip_id?: string): Promise<boolean> => {
+export const updateRideRequestStatus = async (request_id: string, status: string, driver_id: string): Promise<boolean> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        const updateSql = `UPDATE ride_requests SET status = $2, updated_at = now() WHERE id = $1 RETURNING seats, trip_id;`;
+        // Verify driver owns the trip
+        const checkOwnershipSql = `
+            SELECT t.id 
+            FROM ride_requests rr
+            JOIN trips t ON rr.trip_id = t.id
+            WHERE rr.id = $1 AND t.driver_id = $2
+        `;
+        const ownershipRes = await client.query(checkOwnershipSql, [request_id, driver_id]);
+        if (ownershipRes.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return false;
+        }
+
+        const updateSql = `UPDATE ride_requests SET status = $2, updated_at = now() WHERE id = $1 RETURNING seats, trip_id; `;
         const res = await client.query(updateSql, [request_id, status]);
 
         if (res.rowCount === 0) {
@@ -961,19 +693,17 @@ export const updateRideRequestStatus = async (request_id: string, status: string
         const { seats, trip_id: requestTripId } = res.rows[0];
 
         if (status === 'accepted') {
-            const updateSeatsSql = `UPDATE trips SET available_seats = available_seats - $1, updated_at = now() WHERE id = $2 AND available_seats >= $1;`;
+            const updateSeatsSql = `UPDATE trips SET available_seats = available_seats - $1, updated_at = now() WHERE id = $2 AND available_seats >= $1; `;
             const seatsRes = await client.query(updateSeatsSql, [seats, requestTripId]);
             if (seatsRes.rowCount === 0) {
                 await client.query('ROLLBACK');
                 return false;
             }
         } else if (status === 'rejected' || status === 'cancelled') {
-            const checkSql = `SELECT status FROM ride_requests WHERE id = $1;`;
-            const checkRes = await client.query(checkSql, [request_id]);
-            if (checkRes.rows[0]?.status === 'accepted') {
-                const restoreSeatsSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2;`;
-                await client.query(restoreSeatsSql, [seats, requestTripId]);
-            }
+            // Seats were already deducted when the request was created ('waiting')
+            // So when rejecting or cancelling, we always restore them regardless of whether it was accepted or waiting.
+            const restoreSeatsSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
+            await client.query(restoreSeatsSql, [seats, requestTripId]);
         }
 
         await client.query('COMMIT');
@@ -987,12 +717,18 @@ export const updateRideRequestStatus = async (request_id: string, status: string
     }
 };
 
-export const removeRiderFromTrip = async (request_id: string): Promise<boolean> => {
+export const removeRiderFromTrip = async (request_id: string, requesting_user_id?: string): Promise<boolean> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        const getSql = `SELECT seats, trip_id, status FROM ride_requests WHERE id = $1;`;
+        const getSql = `
+            SELECT rr.seats, rr.trip_id, rr.status, rr.rider_id, t.driver_id, d.user_id as driver_user_id
+            FROM ride_requests rr
+            JOIN trips t ON rr.trip_id = t.id
+            JOIN drivers d ON t.driver_id = d.id
+            WHERE rr.id = $1
+        `;
         const getRes = await client.query(getSql, [request_id]);
 
         if (getRes.rowCount === 0) {
@@ -1000,13 +736,19 @@ export const removeRiderFromTrip = async (request_id: string): Promise<boolean> 
             return false;
         }
 
-        const { seats, trip_id, status } = getRes.rows[0];
+        const { seats, trip_id, status, rider_id, driver_user_id } = getRes.rows[0];
 
-        const deleteSql = `DELETE FROM ride_requests WHERE id = $1;`;
+        if (requesting_user_id && requesting_user_id !== rider_id && requesting_user_id !== driver_user_id) {
+            await client.query('ROLLBACK');
+            console.error("Unauthorized removal attempt");
+            return false;
+        }
+
+        const deleteSql = `DELETE FROM ride_requests WHERE id = $1; `;
         await client.query(deleteSql, [request_id]);
 
-        if (status === 'accepted') {
-            const restoreSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2;`;
+        if (status === 'accepted' || status === 'waiting') {
+            const restoreSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
             await client.query(restoreSql, [seats, trip_id]);
         }
 
@@ -1020,3 +762,4 @@ export const removeRiderFromTrip = async (request_id: string): Promise<boolean> 
         client.release();
     }
 };
+
