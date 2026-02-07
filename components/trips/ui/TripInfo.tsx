@@ -58,7 +58,7 @@ export default function TripInfo() {
             if (result.success) {
                 toast.success("Ride request sent successfully!");
                 setSelectedTrip(null);
-                router.push("/dashboard"); // Or wherever ride requests are tracked
+                router.push("/trips");
             } else {
                 toast.error(result.message || "Failed to send ride request");
             }

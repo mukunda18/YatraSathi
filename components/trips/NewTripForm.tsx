@@ -60,7 +60,7 @@ export default function NewTripForm() {
             if (result.success) {
                 toast.success("Trip created successfully!");
                 clear();
-                router.push("/trips");
+                router.push("/driver/dashboard");
             } else {
                 toast.error(result.message || "Failed to create trip");
             }

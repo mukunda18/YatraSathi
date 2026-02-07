@@ -2,76 +2,105 @@
 
 import { SafeUser } from "@/app/actions/authActions";
 import Link from "next/link";
-import { HiArrowRight, HiSearch, HiPlusCircle } from "react-icons/hi";
+import { HiSearch, HiPlusCircle, HiTicket, HiTruck, HiChartBar } from "react-icons/hi";
 
 interface HeroProps {
     user: SafeUser | null;
 }
 
 export default function Hero({ user }: HeroProps) {
-    return (
-        <section className="relative">
-            <div className="text-center mb-16">
-                <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 mb-8">
-                    <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-widest text-indigo-400">Join the Future of Travel</span>
-                </div>
-                <h1 className="text-5xl font-black tracking-tight text-white sm:text-8xl leading-[1.1] mb-8">
-                    Your <span className="text-indigo-500 italic">Next</span> <br />
-                    Adventure Starts Here.
+    if (!user) {
+        return (
+            <section className="text-center py-16">
+                <h1 className="text-4xl font-black tracking-tight text-white mb-4">
+                    Welcome to <span className="text-indigo-500 italic">YatraSathi</span>
                 </h1>
-                <p className="text-xl leading-relaxed text-slate-400 max-w-2xl mx-auto font-medium">
-                    Experience a smarter way to move. Secure, fast, and remarkably sleek.
-                    Your journey redefined with YatraSathi.
+                <p className="text-slate-500 font-medium mb-8 max-w-md mx-auto">
+                    Share rides, save money, and travel together. Login to get started.
                 </p>
-            </div>
+                <div className="flex items-center justify-center gap-4">
+                    <Link href="/login" className="px-6 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors border border-white/10 rounded-xl hover:border-white/20">
+                        Login
+                    </Link>
+                    <Link href="/signup" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20">
+                        Create Account
+                    </Link>
+                </div>
+            </section>
+        );
+    }
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                {/* Book a Journey Card */}
-                <Link href="/trips" className="group relative">
-                    <div className="absolute inset-0 bg-indigo-600/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative glass-card rounded-[2.5rem] p-10 border border-white/10 hover:border-indigo-500/50 transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-700">
-                            <HiSearch className="w-32 h-32 text-indigo-500" />
-                        </div>
+    return (
+        <section className="space-y-10">
+            <header>
+                <p className="text-slate-500 text-sm font-medium mb-1">Good to see you,</p>
+                <h1 className="text-3xl font-black tracking-tight text-white">{user.name}</h1>
+            </header>
 
-                        <div className="relative z-10">
-                            <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center mb-6 shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
-                                <HiSearch className="w-7 h-7 text-white" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Passenger</h2>
+                    <div className="space-y-3">
+                        <Link href="/trips/join" className="group bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all duration-300 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                <HiSearch className="w-6 h-6 text-indigo-400" />
                             </div>
-                            <h3 className="text-3xl font-black text-white mb-3">Book a <span className="text-indigo-400">Journey</span></h3>
-                            <p className="text-slate-400 font-medium mb-8 leading-relaxed">
-                                Find the perfect ride at the best price. Secure, verified, and ready whenever you are.
-                            </p>
-                            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-indigo-400 group-hover:gap-4 transition-all duration-300">
-                                Start Exploring <HiArrowRight className="w-5 h-5" />
+                            <div>
+                                <h3 className="text-base font-black text-white">Find a Ride</h3>
+                                <p className="text-xs text-slate-500">Search available trips near you</p>
                             </div>
-                        </div>
+                        </Link>
+
+                        <Link href="/trips" className="group bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all duration-300 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                <HiTicket className="w-6 h-6 text-blue-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-black text-white">My Trips</h3>
+                                <p className="text-xs text-slate-500">View your joined rides</p>
+                            </div>
+                        </Link>
                     </div>
-                </Link>
+                </div>
 
-                {/* Offer a Ride Card */}
-                <Link href="/trips/new" className="group relative">
-                    <div className="absolute inset-0 bg-emerald-600/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative glass-card rounded-[2.5rem] p-10 border border-white/10 hover:border-emerald-500/50 transition-all duration-500 overflow-hidden transform hover:-translate-y-2">
-                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-700">
-                            <HiPlusCircle className="w-32 h-32 text-emerald-500" />
-                        </div>
+                <div>
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Driver</h2>
+                    <div className="space-y-3">
+                        {user.isDriver ? (
+                            <>
+                                <Link href="/trips/new" className="group bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-300 flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                        <HiPlusCircle className="w-6 h-6 text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-black text-white">Offer a Ride</h3>
+                                        <p className="text-xs text-slate-500">Post a new trip</p>
+                                    </div>
+                                </Link>
 
-                        <div className="relative z-10">
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-500">
-                                <HiPlusCircle className="w-7 h-7 text-white" />
-                            </div>
-                            <h3 className="text-3xl font-black text-white mb-3">Offer a <span className="text-emerald-400">Ride</span></h3>
-                            <p className="text-slate-400 font-medium mb-8 leading-relaxed">
-                                Share your journey and earn. The smartest way to offset your travel costs while meeting new people.
-                            </p>
-                            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-400 group-hover:gap-4 transition-all duration-300">
-                                {user?.isDriver ? "Post a Trip" : "Start Earning"} <HiArrowRight className="w-5 h-5" />
-                            </div>
-                        </div>
+                                <Link href="/driver/dashboard" className="group bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-300 flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                        <HiChartBar className="w-6 h-6 text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-black text-white">Dashboard</h3>
+                                        <p className="text-xs text-slate-500">Manage your trips</p>
+                                    </div>
+                                </Link>
+                            </>
+                        ) : (
+                            <Link href="/driver/register" className="group bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all duration-300 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                    <HiTruck className="w-6 h-6 text-amber-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-black text-white">Become a Driver</h3>
+                                    <p className="text-xs text-slate-500">Register your vehicle and start earning</p>
+                                </div>
+                            </Link>
+                        )}
                     </div>
-                </Link>
+                </div>
             </div>
         </section>
     );
