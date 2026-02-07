@@ -198,7 +198,7 @@ export default function LocationField({
         : !!(currentStore[type as "from" | "to"] && (currentStore[type as "from" | "to"] as any).lat !== 0 && (currentStore[type as "from" | "to"] as any).lng !== 0);
 
     return (
-        <div className="relative group/field" ref={containerRef}>
+        <div className={`relative group/field ${(showDropdown && suggestions.length > 0) || isActive ? 'z-50' : 'z-0'}`} ref={containerRef}>
             <div className="flex items-center justify-between mb-1.5 px-1">
                 <label className={`text-[9px] font-black uppercase tracking-[0.2em] ${iconColor} opacity-80`}>{label}</label>
                 {!isVerified && inputValue.length > 0 && (
