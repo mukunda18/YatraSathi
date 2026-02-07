@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useUIStore } from "@/store/uiStore";
 
 interface OverlayProps {
     isOpen: boolean;
@@ -39,6 +40,15 @@ export default function Overlay({
             window.removeEventListener("keydown", handleEscape);
         };
     }, [isOpen, onClose]);
+
+    useEffect(() => {
+        if (isOpen) {
+            useUIStore.getState().incrementOverlays();
+            return () => {
+                useUIStore.getState().decrementOverlays();
+            };
+        }
+    }, [isOpen]);
 
     if (!isOpen || !mounted) return null;
 

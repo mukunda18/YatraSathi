@@ -36,7 +36,7 @@ export const initDb = async () => {
 
             -- 3. ROUTES
             CREATE TABLE IF NOT EXISTS routes (
-                id BIGSERIAL PRIMARY KEY,
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 geom GEOGRAPHY(LineString, 4326),
                 buffer_100 GEOGRAPHY(Polygon, 4326),
                 bbox GEOGRAPHY(Polygon, 4326),
@@ -55,7 +55,7 @@ export const initDb = async () => {
             CREATE TABLE IF NOT EXISTS trips (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
-                route_id BIGINT REFERENCES routes(id) ON DELETE SET NULL,
+                route_id UUID REFERENCES routes(id) ON DELETE SET NULL,
                 from_location GEOGRAPHY(POINT, 4326) NOT NULL,
                 from_address TEXT NOT NULL,
                 to_location GEOGRAPHY(POINT, 4326) NOT NULL,

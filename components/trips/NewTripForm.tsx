@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createTripAction } from "@/app/actions/tripActions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -35,6 +35,33 @@ export default function NewTripForm() {
 
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        const fetchRoute = async () => {
+            if (!from || !to) {
+                setRouteGeometry(null);
+                return;
+            }
+            const coords = [
+                `${from.lng},${from.lat}`,
+                ...stops.filter(s => s.lat && s.lng).map(s => `${s.lng},${s.lat}`),
+                `${to.lng},${to.lat}`
+            ].join(';');
+
+            try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                const data = await res.json();
+
+                if (data.code === 'Ok' && data.routes?.length > 0) {
+                    setRouteGeometry(data.routes[0].geometry.coordinates);
+                }
+            } catch (error) {
+                console.error("Error fetching route:", error);
+            }
+        };
+
+        fetchRoute();
+    }, [from, to, stops]);
 
     const addStop = () => {
         const id = Math.random().toString(36).substring(2, 9);
@@ -178,7 +205,6 @@ export default function NewTripForm() {
                 routeGeometry={routeGeometry}
                 activeField={activeField}
                 onMapClick={handleMapClick}
-                setRouteGeometry={setRouteGeometry}
             />
 
             <div className="absolute top-8 left-8 w-full max-w-sm z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">

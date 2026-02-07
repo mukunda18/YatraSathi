@@ -20,7 +20,6 @@ interface TripMapProps {
     selectedTrip?: TripSearchResult | null;
     activeField?: "from" | "to" | string | null;
     onMapClick?: (lat: number, lng: number) => void;
-    setRouteGeometry?: (geometry: [number, number][] | null) => void;
 }
 
 export default function TripMap({
@@ -31,8 +30,7 @@ export default function TripMap({
     routeGeometry,
     selectedTrip = null,
     activeField = null,
-    onMapClick,
-    setRouteGeometry
+    onMapClick
 }: TripMapProps) {
     const [viewState, setViewState] = useState({
         longitude: 85.324,
@@ -40,34 +38,6 @@ export default function TripMap({
         zoom: 13
     });
 
-    useEffect(() => {
-        if (mode !== "plan" || !setRouteGeometry) return;
-
-        const fetchRoute = async () => {
-            if (!from || !to) {
-                setRouteGeometry(null);
-                return;
-            }
-            const coords = [
-                `${from.lng},${from.lat}`,
-                ...stops.filter(s => s.lat && s.lng).map(s => `${s.lng},${s.lat}`),
-                `${to.lng},${to.lat}`
-            ].join(';');
-
-            try {
-                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-                const data = await res.json();
-
-                if (data.code === 'Ok' && data.routes?.length > 0) {
-                    setRouteGeometry(data.routes[0].geometry.coordinates);
-                }
-            } catch (error) {
-                console.error("Error fetching route:", error);
-            }
-        };
-
-        fetchRoute();
-    }, [from, to, stops, mode, setRouteGeometry]);
 
     const handleMapClick = (e: any) => {
         if (!activeField || !onMapClick) return;
@@ -75,7 +45,7 @@ export default function TripMap({
         onMapClick(lat, lng);
     };
 
-    const displayRoute = mode === "search" && selectedTrip ? selectedTrip.route_geometry : routeGeometry;
+    const displayRoute = routeGeometry;
     const routeColor = mode === "search" ? "#3b82f6" : "#6366f1";
     const routeGlowColor = mode === "search" ? "#60a5fa" : "#818cf8";
 
