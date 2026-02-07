@@ -30,7 +30,7 @@ export default function UserDropdown({ user }: UserDropdownProps) {
             document.addEventListener("mousedown", handleClickOutside);
         }
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [isOpen]);
+    }, [isOpen, activeOverlays]);
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -50,7 +50,7 @@ export default function UserDropdown({ user }: UserDropdownProps) {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 top-full pt-3 z-50">
+                <div className="absolute right-0 top-full pt-3 z-50" onMouseDown={(e) => e.stopPropagation()}>
                     <div className="w-64 rounded-4xl bg-slate-900 border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] overflow-hidden">
                         <div className="px-5 py-5 border-b border-white/5">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-1">Account Active</p>
