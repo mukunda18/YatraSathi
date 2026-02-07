@@ -31,34 +31,51 @@ CREATE TABLE IF NOT EXISTS drivers (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
--- 3. TRIPS
+-- 3. ROUTES
+CREATE TABLE IF NOT EXISTS routes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    geom GEOGRAPHY(LineString, 4326),
+    buffer_100 GEOGRAPHY(Polygon, 4326),
+    bbox GEOGRAPHY(Polygon, 4326),
+    start_point GEOGRAPHY(Point, 4326),
+    end_point GEOGRAPHY(Point, 4326),
+    length_m DOUBLE PRECISION,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_routes_geom ON routes USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_routes_bbox ON routes USING GIST(bbox);
+CREATE INDEX IF NOT EXISTS idx_routes_start ON routes USING GIST(start_point);
+CREATE INDEX IF NOT EXISTS idx_routes_end ON routes USING GIST(end_point);
+CREATE INDEX IF NOT EXISTS idx_routes_buffer_100 ON routes USING GIST(buffer_100);
+-- 4. TRIPS
 CREATE TABLE IF NOT EXISTS trips (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     driver_id UUID NOT NULL REFERENCES drivers(id) ON DELETE CASCADE,
-    from_location GEOGRAPHY(POINT, 4326) NOT NULL,
-    from_address TEXT NOT NULL,
-    to_location GEOGRAPHY(POINT, 4326) NOT NULL,
-    to_address TEXT NOT NULL,
-    route GEOGRAPHY(LINESTRING, 4326),
-    travel_date TIMESTAMPTZ NOT NULL,
-    fare_per_seat NUMERIC(10, 2) NOT NULL CHECK (fare_per_seat >= 0),
-    total_seats INT NOT NULL CHECK (total_seats > 0),
-    available_seats INT NOT NULL CHECK (
-        available_seats >= 0
-        AND available_seats <= total_seats
-    ),
-    description TEXT,
-    status TEXT NOT NULL DEFAULT 'scheduled',
-    cancelled_at TIMESTAMPTZ,
-    cancelled_reason TEXT,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    route_id UUID REFERENCES routes(id) ON DELETE
+    SET NULL,
+        from_location GEOGRAPHY(POINT, 4326) NOT NULL,
+        from_address TEXT NOT NULL,
+        to_location GEOGRAPHY(POINT, 4326) NOT NULL,
+        to_address TEXT NOT NULL,
+        travel_date TIMESTAMPTZ NOT NULL,
+        fare_per_seat NUMERIC(10, 2) NOT NULL CHECK (fare_per_seat >= 0),
+        total_seats INT NOT NULL CHECK (total_seats > 0),
+        available_seats INT NOT NULL CHECK (
+            available_seats >= 0
+            AND available_seats <= total_seats
+        ),
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'scheduled',
+        cancelled_at TIMESTAMPTZ,
+        cancelled_reason TEXT,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_trips_geo_from ON trips USING GIST (from_location);
 CREATE INDEX IF NOT EXISTS idx_trips_geo_to ON trips USING GIST (to_location);
 CREATE INDEX IF NOT EXISTS idx_trips_status ON trips(status);
 CREATE INDEX IF NOT EXISTS idx_trips_driver_id ON trips(driver_id);
--- 3.5 TRIP STOPS
+-- 4.5 TRIP STOPS
 CREATE TABLE IF NOT EXISTS trip_stops (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,

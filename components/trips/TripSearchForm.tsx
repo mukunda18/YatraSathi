@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TripMap from "../map/TripMap";
 import { searchTripsAction } from "@/app/actions/searchActions";
 import { toast } from "sonner";
@@ -23,6 +23,29 @@ export default function TripSearchForm() {
     const [activeField, setActiveField] = useState<"from" | "to" | null>(null);
     const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchProposedRoute = async () => {
+            if (!from || !to || selectedTrip) {
+                if (!selectedTrip) setRouteGeometry(null);
+                return;
+            }
+
+            const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
+            try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                const data = await res.json();
+
+                if (data.code === 'Ok' && data.routes?.length > 0) {
+                    setRouteGeometry(data.routes[0].geometry.coordinates);
+                }
+            } catch (error) {
+                console.error("Error fetching proposed route:", error);
+            }
+        };
+
+        fetchProposedRoute();
+    }, [from, to, selectedTrip]);
 
     const context: SearchFormContext = {
         from, to, fromAddress, toAddress, searchResults, selectedTrip, routeGeometry, activeField, currentPosition,
@@ -111,7 +134,7 @@ export default function TripSearchForm() {
                 mode="search"
                 from={from}
                 to={to}
-                routeGeometry={routeGeometry}
+                routeGeometry={(selectedTrip ? selectedTrip.route_geometry : routeGeometry) || null}
                 selectedTrip={selectedTrip}
                 activeField={activeField}
                 onMapClick={handleMapClick}

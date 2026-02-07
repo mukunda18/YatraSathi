@@ -5,6 +5,7 @@ import { SafeUser } from "@/app/actions/authActions";
 import { HiUser, HiLogout, HiCog, HiTruck, HiChevronDown } from "react-icons/hi";
 import Link from "next/link";
 import Logout from "@/components/auth/ui/Logout";
+import { useUIStore } from "@/store/uiStore";
 
 interface UserDropdownProps {
     user: SafeUser;
@@ -13,10 +14,14 @@ interface UserDropdownProps {
 export default function UserDropdown({ user }: UserDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const activeOverlays = useUIStore((state) => state.activeOverlays);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            const target = event.target as HTMLElement;
+            if (activeOverlays > 0) return;
+
+            if (dropdownRef.current && !dropdownRef.current.contains(target)) {
                 setIsOpen(false);
             }
         };
