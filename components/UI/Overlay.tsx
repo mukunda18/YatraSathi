@@ -62,11 +62,15 @@ export default function Overlay({
                 <div
                     className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
                     onClick={closeOnBackdropClick ? onClose : undefined}
+                    onMouseDown={(e) => e.stopPropagation()}
                 />
             )}
 
             {/* Content Container */}
-            <div className="relative z-10 w-full flex items-center justify-center pointer-events-none">
+            <div
+                className="relative z-10 w-full flex items-center justify-center pointer-events-none"
+                onMouseDown={(e) => e.stopPropagation()}
+            >
                 <div className="pointer-events-auto w-full flex justify-center">
                     {children}
                 </div>

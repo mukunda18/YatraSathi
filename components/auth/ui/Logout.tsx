@@ -19,8 +19,8 @@ export default function Logout() {
         setIsLoading(true);
         const toastId = toast.loading("Logging out...");
         try {
-            clearAuth();
             await onLogout();
+            clearAuth();
             toast.success("Logged out successfully", { id: toastId });
             router.push("/login");
         } catch (error) {
