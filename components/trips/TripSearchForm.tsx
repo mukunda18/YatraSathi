@@ -5,20 +5,67 @@ import TripMap from "../map/TripMap";
 import { searchTripsAction } from "@/app/actions/searchActions";
 import { toast } from "sonner";
 import Card from "@/components/UI/Card";
-import { HiSearch, HiUserGroup, HiClock, HiLocationMarker } from "react-icons/hi";
+import { HiSearch, HiLocationMarker } from "react-icons/hi";
 import LocationField from "./ui/LocationField";
-import { useTripSearchStore } from "@/store/tripSearchStore";
 import TripResultCard from "./ui/TripResultCard";
 import TripInfo from "./ui/TripInfo";
 import TripResultSkeleton from "../skeletons/TripResultSkeleton";
+import { TripLocation, TripSearchResult, SearchFormContext } from "@/store/types";
 
 export default function TripSearchForm() {
-    const {
-        from, to, fromAddress, toAddress,
-        searchResults, selectedTrip,
-        setSearchResults, setSelectedTrip, clear
-    } = useTripSearchStore();
+    const [from, setFrom] = useState<TripLocation | null>(null);
+    const [to, setTo] = useState<TripLocation | null>(null);
+    const [fromAddress, setFromAddress] = useState("");
+    const [toAddress, setToAddress] = useState("");
+    const [searchResults, setSearchResults] = useState<TripSearchResult[]>([]);
+    const [selectedTrip, setSelectedTrip] = useState<TripSearchResult | null>(null);
+    const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
+    const [activeField, setActiveField] = useState<"from" | "to" | null>(null);
+    const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [loading, setLoading] = useState(false);
+
+    const context: SearchFormContext = {
+        from, to, fromAddress, toAddress, searchResults, selectedTrip, routeGeometry, activeField, currentPosition,
+        setFrom, setTo, setFromAddress, setToAddress, setSearchResults, setSelectedTrip, setRouteGeometry, setActiveField, setCurrentPosition
+    };
+
+    const handleMapClick = async (lat: number, lng: number) => {
+        if (!activeField) return;
+
+        const tempAddress = "Locating...";
+        if (activeField === "from") {
+            setFrom({ lat, lng, address: tempAddress });
+        } else if (activeField === "to") {
+            setTo({ lat, lng, address: tempAddress });
+        }
+
+        const fieldToUpdate = activeField;
+        setActiveField(null);
+
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            const address = data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
+            if (fieldToUpdate === "from") {
+                setFrom({ lat, lng, address });
+                setFromAddress(address);
+            } else if (fieldToUpdate === "to") {
+                setTo({ lat, lng, address });
+                setToAddress(address);
+            }
+        } catch (error) {
+            console.error("Geocoding error:", error);
+            const fallbackAddress = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            if (fieldToUpdate === "from") {
+                setFrom({ lat, lng, address: fallbackAddress });
+                setFromAddress(fallbackAddress);
+            } else if (fieldToUpdate === "to") {
+                setTo({ lat, lng, address: fallbackAddress });
+                setToAddress(fallbackAddress);
+            }
+        }
+    };
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -54,13 +101,21 @@ export default function TripSearchForm() {
         }
     };
 
-    const handleResultClick = (trip: any) => {
+    const handleResultClick = (trip: TripSearchResult) => {
         setSelectedTrip(selectedTrip?.id === trip.id ? null : trip);
     };
 
     return (
         <div className="relative w-full h-full overflow-hidden">
-            <TripMap mode="search" />
+            <TripMap
+                mode="search"
+                from={from}
+                to={to}
+                routeGeometry={routeGeometry}
+                selectedTrip={selectedTrip}
+                activeField={activeField}
+                onMapClick={handleMapClick}
+            />
 
             <div className="absolute top-8 left-8 w-full max-w-sm z-10 bottom-8">
                 <Card className="h-full border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card transition-all duration-500 hover:border-blue-500/20 flex flex-col p-0">
@@ -84,6 +139,7 @@ export default function TripSearchForm() {
                             placeholder="Where are you?"
                             colorClass="blue"
                             iconColor="text-blue-400"
+                            context={context}
                         />
 
                         <LocationField
@@ -93,6 +149,7 @@ export default function TripSearchForm() {
                             placeholder="Where to?"
                             colorClass="indigo"
                             iconColor="text-indigo-400"
+                            context={context}
                         />
 
                         <button
@@ -120,12 +177,14 @@ export default function TripSearchForm() {
                                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{searchResults.length} Matches Found</span>
                                     <button onClick={() => setSearchResults([])} className="text-[8px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300">Clear</button>
                                 </div>
-                                {searchResults.map((trip: any) => (
+                                {searchResults.map((trip) => (
                                     <TripResultCard
                                         key={trip.id}
                                         trip={trip}
                                         isSelected={selectedTrip?.id === trip.id}
                                         onClick={() => handleResultClick(trip)}
+                                        from={from}
+                                        to={to}
                                     />
                                 ))}
                             </>
@@ -138,7 +197,12 @@ export default function TripSearchForm() {
                     </div>
                 </Card>
             </div>
-            <TripInfo />
+            <TripInfo
+                selectedTrip={selectedTrip}
+                setSelectedTrip={setSelectedTrip}
+                from={from}
+                to={to}
+            />
         </div>
     );
 }

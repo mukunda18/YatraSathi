@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import Map, { NavigationControl } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useTripSearchStore } from "@/store/tripSearchStore";
-import { useTripCreationStore } from "@/store/tripCreationStore";
 import { parseWKT } from "@/utils/geo";
+import { TripLocation, StopLocation, TripSearchResult } from "@/store/types";
 
 import RouteLayer from "./ui/RouteLayer";
 import TripMarker from "./ui/TripMarker";
@@ -14,32 +13,35 @@ import IndicatorMarker from "./ui/IndicatorMarker";
 
 interface TripMapProps {
     mode?: "plan" | "search";
+    from: TripLocation | null;
+    to: TripLocation | null;
+    stops?: StopLocation[];
+    routeGeometry: [number, number][] | null;
+    selectedTrip?: TripSearchResult | null;
+    activeField?: "from" | "to" | string | null;
+    onMapClick?: (lat: number, lng: number) => void;
+    setRouteGeometry?: (geometry: [number, number][] | null) => void;
 }
 
-export default function TripMap({ mode = "plan" }: TripMapProps) {
-    const searchStore = useTripSearchStore();
-    const creationStore = useTripCreationStore();
-
-    const currentStore = mode === "search" ? searchStore : creationStore;
-
-    const {
-        from, to, activeField, routeGeometry,
-        setFrom, setTo, setActiveField, setRouteGeometry
-    } = currentStore;
-
-    const stops = mode === "plan" ? creationStore.stops : [];
-    const updateStop = creationStore.updateStop;
-    const selectedTrip = mode === "search" ? searchStore.selectedTrip : null;
-
+export default function TripMap({
+    mode = "plan",
+    from,
+    to,
+    stops = [],
+    routeGeometry,
+    selectedTrip = null,
+    activeField = null,
+    onMapClick,
+    setRouteGeometry
+}: TripMapProps) {
     const [viewState, setViewState] = useState({
-        longitude: 85.324, // Kathmandu
+        longitude: 85.324,
         latitude: 27.7172,
         zoom: 13
     });
 
-
     useEffect(() => {
-        if (mode !== "plan") return;
+        if (mode !== "plan" || !setRouteGeometry) return;
 
         const fetchRoute = async () => {
             if (!from || !to) {
@@ -67,53 +69,16 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
         fetchRoute();
     }, [from, to, stops, mode, setRouteGeometry]);
 
-    const handleMapClick = async (e: any) => {
-        if (!activeField) return;
-
+    const handleMapClick = (e: any) => {
+        if (!activeField || !onMapClick) return;
         const { lng, lat } = e.lngLat;
-        const tempAddress = "Locating...";
-
-        if (activeField === "from") {
-            setFrom({ lat, lng, address: tempAddress });
-        } else if (activeField === "to") {
-            setTo({ lat, lng, address: tempAddress });
-        } else if (typeof activeField === "string") {
-            updateStop(activeField, { lat, lng, address: tempAddress });
-        }
-
-        const fieldToUpdate = activeField;
-        setActiveField(null);
-
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-            const data = await res.json();
-            const address = data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-
-            if (fieldToUpdate === "from") {
-                setFrom({ lat, lng, address });
-            } else if (fieldToUpdate === "to") {
-                setTo({ lat, lng, address });
-            } else if (typeof fieldToUpdate === "string") {
-                updateStop(fieldToUpdate, { lat, lng, address });
-            }
-        } catch (error) {
-            console.error("Geocoding error:", error);
-            const fallbackAddress = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-            if (fieldToUpdate === "from") {
-                setFrom({ lat, lng, address: fallbackAddress });
-            } else if (fieldToUpdate === "to") {
-                setTo({ lat, lng, address: fallbackAddress });
-            } else if (typeof fieldToUpdate === "string") {
-                updateStop(fieldToUpdate, { lat, lng, address: fallbackAddress });
-            }
-        }
+        onMapClick(lat, lng);
     };
 
     const displayRoute = mode === "search" && selectedTrip ? selectedTrip.route_geometry : routeGeometry;
     const routeColor = mode === "search" ? "#3b82f6" : "#6366f1";
     const routeGlowColor = mode === "search" ? "#60a5fa" : "#818cf8";
 
-    // Parse pickup and drop points for search mode
     const pickupPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.pickup_route_point) : null;
     const dropPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.drop_route_point) : null;
 
@@ -128,7 +93,6 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
             >
                 <NavigationControl position="bottom-right" />
 
-                {/* Route Rendering */}
                 {displayRoute && (
                     <RouteLayer
                         coordinates={displayRoute}
@@ -137,7 +101,6 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
                     />
                 )}
 
-                {/* Main Trip Markers (A and B) */}
                 {from && (
                     <TripMarker
                         longitude={from.lng}
@@ -160,7 +123,6 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
                     />
                 )}
 
-                {/* Intermediate Stops (Plan Mode) */}
                 {mode === 'plan' && stops.map((stop, index) => (stop.lat && stop.lng) ? (
                     <TripMarker
                         key={stop.id}
@@ -171,10 +133,8 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
                     />
                 ) : null)}
 
-                {/* Search Mode Specific Markers */}
                 {mode === 'search' && selectedTrip && (
                     <>
-                        {/* Trip Stops */}
                         {selectedTrip.stops?.map((stop: any, index: number) => (
                             <TripMarker
                                 key={`trip-stop-${index}`}
@@ -185,7 +145,6 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
                             />
                         ))}
 
-                        {/* Trip Riders */}
                         {selectedTrip.riders?.map((rider: any, index: number) => (
                             <RiderMarker
                                 key={`trip-rider-${index}`}
@@ -195,7 +154,6 @@ export default function TripMap({ mode = "plan" }: TripMapProps) {
                             />
                         ))}
 
-                        {/* Pickup/Drop Points */}
                         {pickupPoint && (
                             <IndicatorMarker
                                 longitude={pickupPoint.lng}

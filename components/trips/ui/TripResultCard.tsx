@@ -1,11 +1,10 @@
 "use client";
 
 import { HiUserGroup, HiClock } from "react-icons/hi";
-import { TripSearchResult } from "@/store/types";
+import { TripSearchResult, TripLocation } from "@/store/types";
 import { toast } from "sonner";
 import { useState } from "react";
 import { createRideRequestAction } from "@/app/actions/tripActions";
-import { useTripSearchStore } from "@/store/tripSearchStore";
 import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
 
@@ -13,11 +12,12 @@ interface TripResultCardProps {
     trip: TripSearchResult;
     isSelected: boolean;
     onClick: () => void;
+    from: TripLocation | null;
+    to: TripLocation | null;
 }
 
-export default function TripResultCard({ trip, isSelected, onClick }: TripResultCardProps) {
+export default function TripResultCard({ trip, isSelected, onClick, from, to }: TripResultCardProps) {
     const [loading, setLoading] = useState(false);
-    const { from, to } = useTripSearchStore();
     const router = useRouter();
 
     const handleBook = async (e: React.MouseEvent) => {

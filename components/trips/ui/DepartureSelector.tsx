@@ -1,16 +1,25 @@
 "use client";
 
-import { useTripCreationStore } from "@/store/tripCreationStore";
+interface DepartureSelectorProps {
+    travelYear: string;
+    travelMonth: string;
+    travelDay: string;
+    travelHour: string;
+    travelMinute: string;
+    setTravelYear: (year: string) => void;
+    setTravelMonth: (month: string) => void;
+    setTravelDay: (day: string) => void;
+    setTravelHour: (hour: string) => void;
+    setTravelMinute: (minute: string) => void;
+}
 
-export default function DepartureSelector() {
-    const {
-        travelYear, setTravelYear,
-        travelMonth, setTravelMonth,
-        travelDay, setTravelDay,
-        travelHour, setTravelHour,
-        travelMinute, setTravelMinute
-    } = useTripCreationStore();
-
+export default function DepartureSelector({
+    travelYear, setTravelYear,
+    travelMonth, setTravelMonth,
+    travelDay, setTravelDay,
+    travelHour, setTravelHour,
+    travelMinute, setTravelMinute
+}: DepartureSelectorProps) {
     return (
         <div className="space-y-1.5">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Departure</label>

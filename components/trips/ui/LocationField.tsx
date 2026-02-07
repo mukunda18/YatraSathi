@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { HiSearch, HiLocationMarker } from "react-icons/hi";
 import { toast } from "sonner";
-import { useTripSearchStore } from "@/store/tripSearchStore";
-import { useTripCreationStore } from "@/store/tripCreationStore";
+import { TripLocation, SearchFormContext, CreationFormContext } from "@/store/types";
 
 interface LocationFieldProps {
     mode: "search" | "plan";
@@ -14,6 +13,7 @@ interface LocationFieldProps {
     colorClass: string;
     iconColor: string;
     onRemove?: () => void;
+    context: SearchFormContext | CreationFormContext;
 }
 
 export default function LocationField({
@@ -23,21 +23,17 @@ export default function LocationField({
     placeholder,
     colorClass,
     iconColor,
-    onRemove
+    onRemove,
+    context
 }: LocationFieldProps) {
-    const searchStore = useTripSearchStore();
-    const creationStore = useTripCreationStore();
-
-    const currentStore = mode === "search" ? searchStore : creationStore;
-
     const {
         from, to, currentPosition, activeField,
         setFrom, setTo, setFromAddress, setToAddress,
         setCurrentPosition, setActiveField, fromAddress, toAddress
-    } = currentStore;
+    } = context;
 
-    const stops = mode === "plan" ? creationStore.stops : [];
-    const updateStop = creationStore.updateStop;
+    const stops = mode === "plan" ? (context as CreationFormContext).stops : [];
+    const updateStop = mode === "plan" ? (context as CreationFormContext).updateStop : () => { };
 
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
@@ -108,7 +104,7 @@ export default function LocationField({
     };
 
     const handleSelectSuggestion = (suggestion: any) => {
-        const loc = {
+        const loc: TripLocation = {
             lat: parseFloat(suggestion.lat),
             lng: parseFloat(suggestion.lon),
             address: suggestion.display_name
@@ -195,7 +191,7 @@ export default function LocationField({
 
     const isVerified = isStop
         ? !!(stop && stop.lat !== 0 && stop.lng !== 0)
-        : !!(currentStore[type as "from" | "to"] && (currentStore[type as "from" | "to"] as any).lat !== 0 && (currentStore[type as "from" | "to"] as any).lng !== 0);
+        : !!((context as any)[type as "from" | "to"] && ((context as any)[type as "from" | "to"] as any).lat !== 0 && ((context as any)[type as "from" | "to"] as any).lng !== 0);
 
     return (
         <div className={`relative group/field ${(showDropdown && suggestions.length > 0) || isActive ? 'z-50' : 'z-0'}`} ref={containerRef}>
