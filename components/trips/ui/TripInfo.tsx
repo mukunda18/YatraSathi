@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
 import { TripSearchResult, TripLocation } from "@/store/types";
+import { useUserRidesStore } from "@/store/userRidesStore";
 
 interface TripInfoProps {
     selectedTrip: TripSearchResult | null;
@@ -63,6 +64,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
 
             if (result.success) {
                 toast.success("Ride request sent successfully!");
+                useUserRidesStore.getState().fetchTrips();
                 setSelectedTrip(null);
                 router.push("/trips");
             } else {

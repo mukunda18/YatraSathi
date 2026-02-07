@@ -5,6 +5,7 @@ interface AuthStore {
     name: string,
     email: string,
     phone: string,
+    isDriver: boolean,
     clearAuth: () => void;
 }
 
@@ -13,5 +14,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
     name: "",
     email: "",
     phone: "",
-    clearAuth: () => set({ name: "", email: "", phone: "", connecting: false }),
+    isDriver: false,
+    clearAuth: () => set({ name: "", email: "", phone: "", connecting: false, isDriver: false }),
 }));
