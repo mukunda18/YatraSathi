@@ -1,35 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getDriverTripsAction } from "@/app/actions/driverActions";
+import { useEffect } from "react";
+import { useDriverRidesStore } from "@/store/driverRidesStore";
 import DriverTripCard from "./DriverTripCard";
 import Link from "next/link";
 import { HiPlusCircle, HiRefresh } from "react-icons/hi";
 
 export default function DriverTripsList() {
-    const [trips, setTrips] = useState<any[]>([]);
-    const [filter, setFilter] = useState<"all" | "scheduled" | "completed" | "cancelled">("all");
-    const [isLoading, setIsLoading] = useState(false);
-
-    const fetchTrips = async () => {
-        setIsLoading(true);
-        try {
-            const result = await getDriverTripsAction();
-            if (result.success) {
-                setTrips(result.trips);
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const { trips, isLoading, lastFetched, fetchTrips } = useDriverRidesStore();
 
     useEffect(() => {
-        fetchTrips();
-    }, []);
+        if (!lastFetched) {
+            fetchTrips();
+        }
+    }, [lastFetched, fetchTrips]);
 
-    const filteredTrips = filter === "all"
-        ? trips
-        : trips.filter(t => t.trip_status === filter);
+    const filteredTrips = trips;
 
     const stats = {
         total: trips.length,
@@ -62,18 +48,9 @@ export default function DriverTripsList() {
 
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    {(["all", "scheduled", "completed", "cancelled"] as const).map((f) => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${filter === f
-                                ? "bg-indigo-600 text-white"
-                                : "bg-slate-800 text-slate-400 hover:text-white"
-                                }`}
-                        >
-                            {f}
-                        </button>
-                    ))}
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        {trips.length} trips
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -101,17 +78,15 @@ export default function DriverTripsList() {
             ) : filteredTrips.length === 0 ? (
                 <div className="text-center py-12 bg-slate-900/30 border border-white/5 rounded-2xl">
                     <p className="text-sm text-slate-500 mb-4">
-                        {filter === "all" ? "You haven't created any trips yet" : `No ${filter} trips`}
+                        You haven't created any trips yet
                     </p>
-                    {filter === "all" && (
-                        <Link
-                            href="/trips/new"
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-colors"
-                        >
-                            <HiPlusCircle className="w-4 h-4" />
-                            Create Your First Trip
-                        </Link>
-                    )}
+                    <Link
+                        href="/trips/new"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-colors"
+                    >
+                        <HiPlusCircle className="w-4 h-4" />
+                        Create Your First Trip
+                    </Link>
                 </div>
             ) : (
                 <div className="space-y-4">

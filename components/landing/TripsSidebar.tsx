@@ -1,31 +1,19 @@
 "use client";
 
-import { getJoinedTripsAction } from "@/app/actions/tripActions";
+import { useUserRidesStore } from "@/store/userRidesStore";
 import Link from "next/link";
-import { HiClock, HiLocationMarker, HiArrowRight } from "react-icons/hi";
-import { useEffect, useState } from "react";
+import { HiClock, HiLocationMarker, HiArrowRight, HiRefresh } from "react-icons/hi";
+import { useEffect } from "react";
 import TripsSidebarSkeleton from "../skeletons/TripsSidebarSkeleton";
 
 export default function TripsSidebar() {
-    const [trips, setTrips] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { trips, isLoading, lastFetched, fetchTrips } = useUserRidesStore();
 
     useEffect(() => {
-        const fetchTrips = async () => {
-            try {
-                const result = await getJoinedTripsAction();
-                if (result.success) {
-                    setTrips(result.trips || []);
-                }
-            } catch (error) {
-                console.error("Failed to fetch trips:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTrips();
-    }, []);
+        if (!lastFetched) {
+            fetchTrips();
+        }
+    }, [lastFetched, fetchTrips]);
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -46,7 +34,7 @@ export default function TripsSidebar() {
         }
     };
 
-    if (loading) {
+    if (isLoading && trips.length === 0) {
         return <TripsSidebarSkeleton />;
     }
 
@@ -54,9 +42,19 @@ export default function TripsSidebar() {
         <aside className="w-80 shrink-0 sticky top-28">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600">My Trips</h2>
-                <Link href="/trips" className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
-                    View All
-                </Link>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={fetchTrips}
+                        disabled={isLoading}
+                        className="p-1 rounded-lg text-slate-500 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                        title="Refresh trips"
+                    >
+                        <HiRefresh className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                    </button>
+                    <Link href="/trips" className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
+                        View All
+                    </Link>
+                </div>
             </div>
 
             {trips.length === 0 ? (

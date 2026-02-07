@@ -1,6 +1,5 @@
 "use client";
 
-import { useTripSearchStore } from "@/store/tripSearchStore";
 import Card from "@/components/UI/Card";
 import { HiX, HiStar, HiChevronRight } from "react-icons/hi";
 import { useState } from "react";
@@ -8,9 +7,16 @@ import { createRideRequestAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
+import { TripSearchResult, TripLocation } from "@/store/types";
 
-export default function TripInfo() {
-    const { selectedTrip, setSelectedTrip, from, to } = useTripSearchStore();
+interface TripInfoProps {
+    selectedTrip: TripSearchResult | null;
+    setSelectedTrip: (trip: TripSearchResult | null) => void;
+    from: TripLocation | null;
+    to: TripLocation | null;
+}
+
+export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: TripInfoProps) {
     const [loading, setLoading] = useState(false);
     const [seats, setSeats] = useState(1);
     const router = useRouter();
@@ -73,7 +79,6 @@ export default function TripInfo() {
         <div className="absolute top-8 left-104 w-full max-w-sm z-10 bottom-8 transition-all duration-500 animate-in slide-in-from-left-4 fade-in">
             <Card className="h-full border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card flex flex-col p-0">
 
-                {/* Header with Close Button */}
                 <div className="p-5 pb-3 relative shrink-0 border-b border-white/5 bg-white/5">
                     <button
                         onClick={() => setSelectedTrip(null)}
@@ -98,7 +103,6 @@ export default function TripInfo() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide">
-                    {/* Vehicle Info */}
                     <div className="p-5 border-b border-white/5">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Vehicle Details</h3>
                         <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between border border-white/5">
@@ -112,11 +116,9 @@ export default function TripInfo() {
                         </div>
                     </div>
 
-                    {/* Route Info */}
                     <div className="p-5 border-b border-white/5">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Trip Route</h3>
                         <div className="relative pl-4 space-y-6">
-                            {/* Line connecting points */}
                             <div className="absolute left-[21px] top-2 bottom-2 w-0.5 bg-linear-to-b from-blue-500 via-indigo-500 to-emerald-500 opacity-30" />
 
                             <div className="relative flex gap-4">
@@ -147,7 +149,6 @@ export default function TripInfo() {
                         </div>
                     </div>
 
-                    {/* Riders Info */}
                     {riders && riders.length > 0 && (
                         <div className="p-5 border-b border-white/5">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">On Board ({riders.length})</h3>
@@ -169,7 +170,6 @@ export default function TripInfo() {
 
                 </div>
 
-                {/* Footer / CTA */}
                 <div className="p-5 bg-slate-950/80 backdrop-blur-md border-t border-white/5 space-y-4">
                     <div className="flex items-center justify-between">
                         <div>

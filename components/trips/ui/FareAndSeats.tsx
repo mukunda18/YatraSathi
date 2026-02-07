@@ -2,11 +2,15 @@
 
 import { HiCurrencyRupee } from "react-icons/hi";
 import Input from "@/components/UI/Input";
-import { useTripCreationStore } from "@/store/tripCreationStore";
 
-export default function FareAndSeats() {
-    const { fare, setFare, seats, setSeats } = useTripCreationStore();
+interface FareAndSeatsProps {
+    fare: string;
+    seats: number;
+    setFare: (fare: string) => void;
+    setSeats: (seats: number) => void;
+}
 
+export default function FareAndSeats({ fare, setFare, seats, setSeats }: FareAndSeatsProps) {
     return (
         <div className="grid grid-cols-2 gap-3">
             <Input

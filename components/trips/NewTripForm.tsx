@@ -7,27 +7,122 @@ import { toast } from "sonner";
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card";
 import { HiChatAlt2, HiPaperAirplane, HiPlusCircle } from "react-icons/hi";
-import { useTripCreationStore } from "@/store/tripCreationStore";
 import LocationField from "./ui/LocationField";
 import DepartureSelector from "./ui/DepartureSelector";
 import FareAndSeats from "./ui/FareAndSeats";
 import TripMap from "../map/TripMap";
+import { TripLocation, StopLocation, CreationFormContext } from "@/store/types";
 
 export default function NewTripForm() {
-    const {
-        from, to, fromAddress, toAddress, routeGeometry, stops, addStop, removeStop, clear, activeField,
-        travelYear, travelMonth, travelDay, travelHour, travelMinute, fare, seats, description,
-        setTravelYear, setTravelMonth, setTravelDay, setTravelHour, setTravelMinute, setFare, setSeats, setDescription
-    } = useTripCreationStore();
+    const [from, setFrom] = useState<TripLocation | null>(null);
+    const [to, setTo] = useState<TripLocation | null>(null);
+    const [fromAddress, setFromAddress] = useState("");
+    const [toAddress, setToAddress] = useState("");
+    const [stops, setStops] = useState<StopLocation[]>([]);
+    const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
+    const [activeField, setActiveField] = useState<"from" | "to" | string | null>(null);
+    const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+    const [travelYear, setTravelYear] = useState(new Date().getFullYear().toString());
+    const [travelMonth, setTravelMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
+    const [travelDay, setTravelDay] = useState(new Date().getDate().toString().padStart(2, '0'));
+    const [travelHour, setTravelHour] = useState("12");
+    const [travelMinute, setTravelMinute] = useState("00");
+    const [fare, setFare] = useState("");
+    const [seats, setSeats] = useState(1);
+    const [description, setDescription] = useState("");
 
     const [loading, setLoading] = useState(false);
+    const router = useRouter();
+
+    const addStop = () => {
+        const id = Math.random().toString(36).substring(2, 9);
+        setStops([...stops, { id, lat: 0, lng: 0, address: "" }]);
+    };
+
+    const removeStop = (id: string) => {
+        setStops(stops.filter((s) => s.id !== id));
+    };
+
+    const updateStop = (id: string, loc: Partial<TripLocation>) => {
+        setStops(stops.map((s) => s.id === id ? { ...s, ...loc } : s));
+    };
+
+    const clear = () => {
+        setFrom(null);
+        setTo(null);
+        setFromAddress("");
+        setToAddress("");
+        setStops([]);
+        setRouteGeometry(null);
+        setActiveField(null);
+        setTravelYear(new Date().getFullYear().toString());
+        setTravelMonth((new Date().getMonth() + 1).toString().padStart(2, '0'));
+        setTravelDay(new Date().getDate().toString().padStart(2, '0'));
+        setTravelHour("12");
+        setTravelMinute("00");
+        setFare("");
+        setSeats(1);
+        setDescription("");
+    };
+
+    const context: CreationFormContext = {
+        from, to, fromAddress, toAddress, stops, routeGeometry, activeField, currentPosition,
+        travelYear, travelMonth, travelDay, travelHour, travelMinute, fare, seats, description,
+        setFrom, setTo, setFromAddress, setToAddress, addStop, removeStop, updateStop,
+        setRouteGeometry, setActiveField, setCurrentPosition,
+        setTravelYear, setTravelMonth, setTravelDay, setTravelHour, setTravelMinute,
+        setFare, setSeats, setDescription
+    };
+
+    const handleMapClick = async (lat: number, lng: number) => {
+        if (!activeField) return;
+
+        const tempAddress = "Locating...";
+        if (activeField === "from") {
+            setFrom({ lat, lng, address: tempAddress });
+        } else if (activeField === "to") {
+            setTo({ lat, lng, address: tempAddress });
+        } else {
+            updateStop(activeField, { lat, lng, address: tempAddress });
+        }
+
+        const fieldToUpdate = activeField;
+        setActiveField(null);
+
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            const address = data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
+            if (fieldToUpdate === "from") {
+                setFrom({ lat, lng, address });
+                setFromAddress(address);
+            } else if (fieldToUpdate === "to") {
+                setTo({ lat, lng, address });
+                setToAddress(address);
+            } else {
+                updateStop(fieldToUpdate, { lat, lng, address });
+            }
+        } catch (error) {
+            console.error("Geocoding error:", error);
+            const fallbackAddress = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            if (fieldToUpdate === "from") {
+                setFrom({ lat, lng, address: fallbackAddress });
+                setFromAddress(fallbackAddress);
+            } else if (fieldToUpdate === "to") {
+                setTo({ lat, lng, address: fallbackAddress });
+                setToAddress(fallbackAddress);
+            } else {
+                updateStop(fieldToUpdate, { lat, lng, address: fallbackAddress });
+            }
+        }
+    };
 
     const isFromVerified = !!(from && fromAddress && from.address.trim() === fromAddress.trim());
     const isToVerified = !!(to && toAddress && to.address.trim() === toAddress.trim());
     const areStopsVerified = stops.every(stop => stop.lat !== 0 && stop.lng !== 0 && stop.address);
     const isReady = isFromVerified && isToVerified && areStopsVerified && fare && seats;
-
-    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,7 +168,16 @@ export default function NewTripForm() {
 
     return (
         <div className="relative w-full h-full overflow-hidden">
-            <TripMap />
+            <TripMap
+                mode="plan"
+                from={from}
+                to={to}
+                stops={stops}
+                routeGeometry={routeGeometry}
+                activeField={activeField}
+                onMapClick={handleMapClick}
+                setRouteGeometry={setRouteGeometry}
+            />
 
             <div className="absolute top-8 left-8 w-full max-w-sm z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-hide">
                 <form onSubmit={handleSubmit} className="space-y-3 pb-8">
@@ -99,6 +203,7 @@ export default function NewTripForm() {
                                 placeholder="Pickup location..."
                                 colorClass="indigo"
                                 iconColor="text-indigo-400"
+                                context={context}
                             />
 
                             {stops.map((stop, index) => (
@@ -111,6 +216,7 @@ export default function NewTripForm() {
                                         colorClass="purple"
                                         iconColor="text-purple-400"
                                         onRemove={() => removeStop(stop.id)}
+                                        context={context}
                                     />
                                 </div>
                             ))}
@@ -133,11 +239,28 @@ export default function NewTripForm() {
                                 placeholder="Destination..."
                                 colorClass="emerald"
                                 iconColor="text-emerald-400"
+                                context={context}
                             />
 
                             <div className="grid grid-cols-1 gap-3 pt-1">
-                                <DepartureSelector />
-                                <FareAndSeats />
+                                <DepartureSelector
+                                    travelYear={travelYear}
+                                    travelMonth={travelMonth}
+                                    travelDay={travelDay}
+                                    travelHour={travelHour}
+                                    travelMinute={travelMinute}
+                                    setTravelYear={setTravelYear}
+                                    setTravelMonth={setTravelMonth}
+                                    setTravelDay={setTravelDay}
+                                    setTravelHour={setTravelHour}
+                                    setTravelMinute={setTravelMinute}
+                                />
+                                <FareAndSeats
+                                    fare={fare}
+                                    seats={seats}
+                                    setFare={setFare}
+                                    setSeats={setSeats}
+                                />
                             </div>
 
                             <div className="pt-1">
