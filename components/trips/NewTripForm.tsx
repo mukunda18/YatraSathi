@@ -14,16 +14,12 @@ import FareAndSeats from "./ui/FareAndSeats";
 import TripMap from "../map/TripMap";
 
 export default function NewTripForm() {
-    const { from, to, fromAddress, toAddress, routeGeometry, stops, addStop, removeStop, clear, activeField } = useTripCreationStore();
+    const {
+        from, to, fromAddress, toAddress, routeGeometry, stops, addStop, removeStop, clear, activeField,
+        travelYear, travelMonth, travelDay, travelHour, travelMinute, fare, seats, description,
+        setTravelYear, setTravelMonth, setTravelDay, setTravelHour, setTravelMinute, setFare, setSeats, setDescription
+    } = useTripCreationStore();
 
-    const [travelYear, setTravelYear] = useState(new Date().getFullYear().toString());
-    const [travelMonth, setTravelMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
-    const [travelDay, setTravelDay] = useState(new Date().getDate().toString().padStart(2, '0'));
-    const [travelHour, setTravelHour] = useState("12");
-    const [travelMinute, setTravelMinute] = useState("00");
-    const [fare, setFare] = useState("");
-    const [seats, setSeats] = useState(1);
-    const [description, setDescription] = useState("");
     const [loading, setLoading] = useState(false);
 
     const isFromVerified = !!(from && fromAddress && from.address.trim() === fromAddress.trim());
@@ -140,18 +136,8 @@ export default function NewTripForm() {
                             />
 
                             <div className="grid grid-cols-1 gap-3 pt-1">
-                                <DepartureSelector
-                                    travelYear={travelYear} setTravelYear={setTravelYear}
-                                    travelMonth={travelMonth} setTravelMonth={setTravelMonth}
-                                    travelDay={travelDay} setTravelDay={setTravelDay}
-                                    travelHour={travelHour} setTravelHour={setTravelHour}
-                                    travelMinute={travelMinute} setTravelMinute={setTravelMinute}
-                                />
-
-                                <FareAndSeats
-                                    fare={fare} setFare={setFare}
-                                    seats={seats} setSeats={setSeats}
-                                />
+                                <DepartureSelector />
+                                <FareAndSeats />
                             </div>
 
                             <div className="pt-1">
