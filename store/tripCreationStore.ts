@@ -11,6 +11,15 @@ interface TripCreationStore {
     activeField: "from" | "to" | string | null;
     currentPosition: { lat: number; lng: number } | null;
 
+    travelYear: string;
+    travelMonth: string;
+    travelDay: string;
+    travelHour: string;
+    travelMinute: string;
+    fare: string;
+    seats: number;
+    description: string;
+
     setFrom: (loc: TripLocation | null) => void;
     setTo: (loc: TripLocation | null) => void;
     setFromAddress: (addr: string) => void;
@@ -21,6 +30,16 @@ interface TripCreationStore {
     setRouteGeometry: (geometry: [number, number][] | null) => void;
     setActiveField: (field: "from" | "to" | string | null) => void;
     setCurrentPosition: (pos: { lat: number; lng: number } | null) => void;
+
+    setTravelYear: (year: string) => void;
+    setTravelMonth: (month: string) => void;
+    setTravelDay: (day: string) => void;
+    setTravelHour: (hour: string) => void;
+    setTravelMinute: (minute: string) => void;
+    setFare: (fare: string) => void;
+    setSeats: (seats: number) => void;
+    setDescription: (desc: string) => void;
+
     clear: () => void;
 }
 
@@ -33,6 +52,16 @@ export const useTripCreationStore = create<TripCreationStore>((set) => ({
     routeGeometry: null,
     activeField: null,
     currentPosition: null,
+
+    // Trip details defaults
+    travelYear: new Date().getFullYear().toString(),
+    travelMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+    travelDay: new Date().getDate().toString().padStart(2, '0'),
+    travelHour: "12",
+    travelMinute: "00",
+    fare: "",
+    seats: 1,
+    description: "",
 
     setFrom: (loc) => set({ from: loc, fromAddress: loc?.address || "" }),
     setTo: (loc) => set({ to: loc, toAddress: loc?.address || "" }),
@@ -53,6 +82,17 @@ export const useTripCreationStore = create<TripCreationStore>((set) => ({
     setRouteGeometry: (routeGeometry) => set({ routeGeometry }),
     setActiveField: (activeField) => set({ activeField }),
     setCurrentPosition: (currentPosition) => set({ currentPosition }),
+
+    // Setters for trip details
+    setTravelYear: (travelYear) => set({ travelYear }),
+    setTravelMonth: (travelMonth) => set({ travelMonth }),
+    setTravelDay: (travelDay) => set({ travelDay }),
+    setTravelHour: (travelHour) => set({ travelHour }),
+    setTravelMinute: (travelMinute) => set({ travelMinute }),
+    setFare: (fare) => set({ fare }),
+    setSeats: (seats) => set({ seats }),
+    setDescription: (description) => set({ description }),
+
     clear: () => set({
         from: null,
         to: null,
@@ -60,6 +100,14 @@ export const useTripCreationStore = create<TripCreationStore>((set) => ({
         toAddress: "",
         stops: [],
         routeGeometry: null,
-        activeField: null
+        activeField: null,
+        travelYear: new Date().getFullYear().toString(),
+        travelMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+        travelDay: new Date().getDate().toString().padStart(2, '0'),
+        travelHour: "12",
+        travelMinute: "00",
+        fare: "",
+        seats: 1,
+        description: "",
     }),
 }));
