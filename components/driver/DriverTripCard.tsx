@@ -4,6 +4,8 @@ import { useState } from "react";
 import { cancelTripAction, updateRequestStatusAction, removeRiderAction } from "@/app/actions/driverActions";
 import { HiX, HiCheck, HiTrash, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
 import { toast } from "sonner";
+import Overlay from "../UI/Overlay";
+import Card from "../UI/Card";
 
 interface TripCardProps {
     trip: any;
@@ -239,43 +241,48 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                 )}
             </div>
 
-            {showCancelModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                                <HiExclamation className="w-5 h-5 text-red-400" />
-                            </div>
-                            <h3 className="text-lg font-black text-white">Cancel Trip</h3>
+            <Overlay isOpen={showCancelModal} onClose={() => setShowCancelModal(false)}>
+                <Card className="relative max-w-md w-full border-white/10 p-6 animate-in zoom-in-95 duration-300 shadow-2xl shadow-black/50">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                            <HiExclamation className="w-5 h-5 text-red-400" />
                         </div>
-                        <p className="text-sm text-slate-400 mb-4">
-                            Are you sure you want to cancel this trip? All pending requests will be rejected.
-                        </p>
-                        <textarea
-                            value={cancelReason}
-                            onChange={(e) => setCancelReason(e.target.value)}
-                            placeholder="Reason for cancellation (optional)"
-                            className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 resize-none mb-4"
-                            rows={3}
-                        />
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setShowCancelModal(false)}
-                                className="flex-1 px-4 py-2.5 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:border-white/20 transition-colors"
-                            >
-                                Keep Trip
-                            </button>
-                            <button
-                                onClick={handleCancelTrip}
-                                disabled={isLoading}
-                                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-black text-white transition-colors disabled:opacity-50"
-                            >
-                                {isLoading ? "Cancelling..." : "Cancel Trip"}
-                            </button>
-                        </div>
+                        <h3 className="text-lg font-black text-white">Cancel Trip</h3>
                     </div>
-                </div>
-            )}
+
+                    <p className="text-sm text-slate-400 mb-4">
+                        Are you sure you want to cancel this trip? All pending requests will be rejected.
+                    </p>
+
+                    <textarea
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Reason for cancellation (optional)"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 resize-none mb-2"
+                        rows={3}
+                    />
+
+                    <div className="flex items-center gap-3 mt-6">
+                        <button
+                            onClick={() => setShowCancelModal(false)}
+                            disabled={isLoading}
+                            className="flex-1 px-4 py-2.5 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50"
+                        >
+                            Keep Trip
+                        </button>
+                        <button
+                            onClick={handleCancelTrip}
+                            disabled={isLoading}
+                            className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-black text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isLoading && (
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            )}
+                            Cancel Trip
+                        </button>
+                    </div>
+                </Card>
+            </Overlay>
         </>
     );
 }

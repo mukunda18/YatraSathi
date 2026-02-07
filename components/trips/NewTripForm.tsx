@@ -12,6 +12,7 @@ import DepartureSelector from "./ui/DepartureSelector";
 import FareAndSeats from "./ui/FareAndSeats";
 import TripMap from "../map/TripMap";
 import { TripLocation, StopLocation, CreationFormContext } from "@/store/types";
+import { useDriverRidesStore } from "@/store/driverRidesStore";
 
 export default function NewTripForm() {
     const [from, setFrom] = useState<TripLocation | null>(null);
@@ -154,6 +155,7 @@ export default function NewTripForm() {
 
             if (result.success) {
                 toast.success("Trip created successfully!");
+                useDriverRidesStore.getState().fetchTrips();
                 clear();
                 router.push("/driver/dashboard");
             } else {

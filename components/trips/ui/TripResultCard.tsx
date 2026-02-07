@@ -7,6 +7,7 @@ import { useState } from "react";
 import { createRideRequestAction } from "@/app/actions/tripActions";
 import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
+import { useUserRidesStore } from "@/store/userRidesStore";
 
 interface TripResultCardProps {
     trip: TripSearchResult;
@@ -45,6 +46,7 @@ export default function TripResultCard({ trip, isSelected, onClick, from, to }: 
 
             if (result.success) {
                 toast.success("Ride request sent successfully!");
+                useUserRidesStore.getState().fetchTrips();
                 router.push("/dashboard");
             } else {
                 toast.error(result.message || "Failed to send ride request");
