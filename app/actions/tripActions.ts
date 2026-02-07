@@ -1,6 +1,6 @@
 "use server";
 
-import { createTrip, getDriverByUserId, createRideRequest } from "@/db/db";
+import { createTrip, getDriverByUserId, createRideRequest, getJoinedTripsByRiderId, getTripDetailsById } from "@/db/db";
 import { getUserId } from "./authActions";
 import { validateTrip } from "@/utils/validation";
 
@@ -76,6 +76,13 @@ export async function createRideRequestAction(data: {
     const pickupPoint = `POINT(${data.pickup_location.lng} ${data.pickup_location.lat})`;
     const dropPoint = `POINT(${data.drop_location.lng} ${data.drop_location.lat})`;
 
+    if (data.seats < 1) {
+        return { success: false, message: "Must book at least 1 seat" };
+    }
+    if (data.total_fare < 0) {
+        return { success: false, message: "Invalid fare amount" };
+    }
+
     const request = await createRideRequest({
         rider_id: userId,
         trip_id: data.trip_id,
@@ -94,3 +101,23 @@ export async function createRideRequestAction(data: {
     return { success: true, requestId: request.id };
 }
 
+export async function getJoinedTripsAction() {
+    const userId = await getUserId();
+    if (!userId) {
+        return { success: false, message: "Unauthorized", trips: [] };
+    }
+
+    const trips = await getJoinedTripsByRiderId(userId);
+    return { success: true, trips };
+}
+
+export async function getTripDetailsAction(tripId: string) {
+    const userId = await getUserId();
+
+    const trip = await getTripDetailsById(tripId, userId || undefined);
+    if (!trip) {
+        return { success: false, message: "Trip not found", trip: null };
+    }
+
+    return { success: true, trip };
+}

@@ -10,6 +10,7 @@ import LocationField from "./ui/LocationField";
 import { useTripSearchStore } from "@/store/tripSearchStore";
 import TripResultCard from "./ui/TripResultCard";
 import TripInfo from "./ui/TripInfo";
+import TripResultSkeleton from "../skeletons/TripResultSkeleton";
 
 export default function TripSearchForm() {
     const {
@@ -107,13 +108,19 @@ export default function TripSearchForm() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-5 pb-5 scrollbar-hide space-y-3 border-t border-white/5 pt-4 bg-slate-950/20">
-                        {searchResults.length > 0 ? (
+                        {loading ? (
+                            <div className="space-y-3">
+                                {[1, 2, 3].map((i) => (
+                                    <TripResultSkeleton key={i} />
+                                ))}
+                            </div>
+                        ) : searchResults.length > 0 ? (
                             <>
-                                <div className="px-1 flex items-center justify-between sticky top-0 py-1 bg-transparent z-10">
+                                <div className="px-1 flex items-center justify-between sticky top-0 py-1 bg-transparent z-10 text-white">
                                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{searchResults.length} Matches Found</span>
-                                    <button onClick={clear} className="text-[8px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300">Clear</button>
+                                    <button onClick={() => setSearchResults([])} className="text-[8px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300">Clear</button>
                                 </div>
-                                {searchResults.map((trip) => (
+                                {searchResults.map((trip: any) => (
                                     <TripResultCard
                                         key={trip.id}
                                         trip={trip}

@@ -28,7 +28,7 @@ export default function Navbar({ user }: NavbarProps) {
                         {user ? (
                             <div className="flex items-center gap-8">
                                 <div className="hidden md:flex items-center gap-6">
-                                    <Link href="/trips" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                                    <Link href="/trips/join" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
                                         Find Rides
                                     </Link>
                                     {user.isDriver ? (
