@@ -1,6 +1,6 @@
 "use server";
 
-import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getVerifiedDriver, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
+import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getDriverByUserId, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
 import { getUserId } from "./authActions";
 import { validateTrip } from "@/utils/validation";
 
@@ -21,9 +21,9 @@ export async function createTripAction(data: {
         return { success: false, message: "Unauthorized" };
     }
 
-    const driver = await getVerifiedDriver(userId);
+    const driver = await getDriverByUserId(userId);
     if (!driver) {
-        return { success: false, message: "Driver profile not found or not approved. Please register as a driver first." };
+        return { success: false, message: "Driver profile not found." };
     }
 
     const validation = validateTrip(data);
@@ -152,7 +152,6 @@ export async function cancelRideRequestAction(requestId: string, tripId: string)
     const userId = await getUserId();
     if (!userId) return { success: false, message: "Unauthorized" };
 
-    // Pass userId to verify they are the rider
     const success = await removeRiderFromTrip(requestId, userId);
 
     if (success) {

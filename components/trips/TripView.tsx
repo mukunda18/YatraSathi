@@ -2,7 +2,6 @@
 
 import TripMap from "@/components/map/TripMap";
 import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiArrowLeft, HiXCircle, HiUserGroup, HiLocationMarker } from "react-icons/hi";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cancelTripAction, cancelRideRequestAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
@@ -17,7 +16,6 @@ interface TripViewClientProps {
 
 export default function TripViewClient({ initialTrip, isDriver = false }: TripViewClientProps) {
     const currentTrip = initialTrip;
-    const router = useRouter();
     const [cancelling, setCancelling] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelMode, setCancelMode] = useState<"trip" | "booking" | null>(null);
@@ -94,20 +92,12 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     return (
         <div className="relative w-full h-screen overflow-hidden flex flex-col md:flex-row">
             {/* Map Area */}
-            <div className="flex-1 relative order-2 md:order-1 h-1/2 md:h-full">
+            <div className="flex-1 relative order-2 md:order-2 h-1/2 md:h-full">
                 <TripMap mode="view" trip={currentTrip} />
-
-                <button
-                    onClick={() => router.back()}
-                    className="absolute top-6 left-6 z-20 flex items-center gap-2 px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-2xl active:scale-95"
-                >
-                    <HiArrowLeft className="w-4 h-4" />
-                    Back
-                </button>
             </div>
 
             {/* Info Sidebar Area */}
-            <div className="w-full md:w-[400px] bg-slate-950 border-l border-white/5 z-10 overflow-y-auto modern-scrollbar order-1 md:order-2 h-1/2 md:h-full">
+            <div className="w-full md:w-[400px] bg-slate-950 border-l border-white/5 z-10 overflow-y-auto modern-scrollbar order-1 md:order-1 h-1/2 md:h-full">
                 <div className="p-8 space-y-8">
                     {/* Header */}
                     <div>

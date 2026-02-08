@@ -15,6 +15,10 @@ export interface TripRider {
     rider_phone: string;
     pickup_address: string;
     drop_address: string;
+    pickup_lat: number;
+    pickup_lng: number;
+    drop_lat: number;
+    drop_lng: number;
     seats: number;
     total_fare: number;
     status: string;

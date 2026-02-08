@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Map, { NavigationControl } from "react-map-gl/maplibre";
+import { useRouter } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { parseWKT } from "@/utils/geo";
 import { TripLocation, StopLocation, TripSearchResult } from "@/store/types";
+import { HiArrowLeft } from "react-icons/hi";
 
 import RouteLayer from "./ui/RouteLayer";
 import TripMarker from "./ui/TripMarker";
@@ -34,6 +36,7 @@ export default function TripMap({
     activeField = null,
     onMapClick
 }: TripMapProps) {
+    const router = useRouter();
     const [viewState, setViewState] = useState({
         longitude: 85.324,
         latitude: 27.7172,
@@ -47,6 +50,10 @@ export default function TripMap({
             coords.push({ lat: trip.from_lat, lng: trip.from_lng });
             coords.push({ lat: trip.to_lat, lng: trip.to_lng });
             trip.stops?.forEach((s: any) => coords.push({ lat: s.lat, lng: s.lng }));
+            trip.riders?.forEach((r: any) => {
+                if (r.pickup_lat && r.pickup_lng) coords.push({ lat: r.pickup_lat, lng: r.pickup_lng });
+                if (r.drop_lat && r.drop_lng) coords.push({ lat: r.drop_lat, lng: r.drop_lng });
+            });
         } else if (from && to) {
             coords.push({ lat: from.lat, lng: from.lng });
             coords.push({ lat: to.lat, lng: to.lng });
@@ -64,7 +71,6 @@ export default function TripMap({
             const newLat = (minLat + maxLat) / 2;
             const newLng = (minLng + maxLng) / 2;
 
-            // Only update if coordinates significantly changed or initial state
             if (Math.abs(viewState.latitude - newLat) > 0.0001 ||
                 Math.abs(viewState.longitude - newLng) > 0.0001) {
                 setViewState(prev => ({
@@ -151,6 +157,23 @@ export default function TripMap({
                                 type="stop"
                             />
                         ))}
+
+                        {trip.riders?.map((rider: any, index: number) => (
+                            <div key={`rider-${rider.request_id}`}>
+                                <RiderMarker
+                                    key={`pickup-${rider.request_id}`}
+                                    longitude={rider.pickup_lng}
+                                    latitude={rider.pickup_lat}
+                                    name={`Pickup: ${rider.rider_name}`}
+                                />
+                                <RiderMarker
+                                    key={`drop-${rider.request_id}`}
+                                    longitude={rider.drop_lng}
+                                    latitude={rider.drop_lat}
+                                    name={`Drop: ${rider.rider_name}`}
+                                />
+                            </div>
+                        ))}
                     </>
                 )}
 
@@ -227,6 +250,16 @@ export default function TripMap({
                     </>
                 )}
             </Map>
+
+            {mode === 'view' && (
+                <button
+                    onClick={() => router.back()}
+                    className="absolute top-6 right-6 z-20 flex items-center gap-2 px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-2xl active:scale-95"
+                >
+                    <HiArrowLeft className="w-4 h-4" />
+                    Back
+                </button>
+            )}
         </div>
     );
 }
