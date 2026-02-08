@@ -3,7 +3,8 @@ import { getJoinedTripsAction } from "@/app/actions/tripActions";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import UserTripsList from "@/components/passenger/UserTripsList";
-import BackButton from "@/components/UI/BackButton";
+import Link from "next/link";
+import { HiArrowLeft } from "react-icons/hi";
 
 export const metadata = {
     title: "My Trips | YatraSathi",
@@ -65,7 +66,10 @@ export default async function MyTripsPage() {
                 </Suspense>
 
                 <div className="mt-12 flex justify-center">
-                    <BackButton label="Back to Home" />
+                    <Link href="/" className="inline-flex items-center px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                        <HiArrowLeft className="mr-2 w-4 h-4" />
+                        Back to Home
+                    </Link>
                 </div>
             </div>
         </main>

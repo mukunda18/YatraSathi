@@ -345,7 +345,7 @@ export const searchTrips = async (from_location: string, to_location: string): P
         SELECT 
             t.id, t.driver_id, t.from_address, t.to_address, t.travel_date, t.fare_per_seat, 
             t.total_seats, t.available_seats, t.description, t.status,
-            u.id as driver_user_id, u.name as driver_name, u.avg_rating as driver_rating, u.total_ratings as driver_total_ratings,
+            u.id as driver_user_id, u.name as driver_name, d.avg_rating as driver_rating, d.total_ratings as driver_total_ratings,
             d.vehicle_type, d.vehicle_number, d.vehicle_info,
             ST_AsText(t.from_location) as from_loc,
             ST_AsText(t.to_location) as to_loc,
@@ -448,7 +448,7 @@ export const createRideRequest = async (data: {
         if (tripRes.rowCount === 0) throw new Error('Trip not found');
         if (tripRes.rows[0].available_seats < data.seats) throw new Error('Not enough seats available');
 
-        // 2. Insert request
+        // 2. Insert request with 'waiting' status
         const sql = `
             INSERT INTO ride_requests (
                 rider_id, trip_id, pickup_location, pickup_address,
@@ -521,7 +521,7 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
             t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
             ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
             ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
-            u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, u.avg_rating as driver_rating,
+            u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, d.avg_rating as driver_rating,
             d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
             ST_AsGeoJSON(r.geom) as route_geojson,
             (
@@ -534,14 +534,15 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
                     ORDER BY stop_order
                 ) ts
             ) as stops,
-            (
                 SELECT COALESCE(json_agg(rd), '[]')
                 FROM (
                     SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
-                           rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status
+                           rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
+                           ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
+                           ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng
                     FROM ride_requests rr
                     JOIN users ru ON rr.rider_id = ru.id
-                    WHERE rr.trip_id = t.id AND rr.status = 'accepted'
+                    WHERE rr.trip_id = t.id AND rr.status = 'waiting'
                 ) rd
             ) as riders,
             (
@@ -583,6 +584,17 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+export const getDriverByUserId = async (user_id: string): Promise<Driver | undefined> => {
+    const sql = `SELECT * FROM drivers WHERE user_id = $1;`;
+    try {
+        const res = await query(sql, [user_id]);
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting driver by user_id:', error);
+        return;
+    }
+};
 
 export const getOwnedTrip = async (tripId: string, userId: string): Promise<Trip | null> => {
     const sql = `
@@ -692,16 +704,7 @@ export const updateRideRequestStatus = async (request_id: string, status: string
 
         const { seats, trip_id: requestTripId } = res.rows[0];
 
-        if (status === 'accepted') {
-            const updateSeatsSql = `UPDATE trips SET available_seats = available_seats - $1, updated_at = now() WHERE id = $2 AND available_seats >= $1; `;
-            const seatsRes = await client.query(updateSeatsSql, [seats, requestTripId]);
-            if (seatsRes.rowCount === 0) {
-                await client.query('ROLLBACK');
-                return false;
-            }
-        } else if (status === 'rejected' || status === 'cancelled') {
-            // Seats were already deducted when the request was created ('waiting')
-            // So when rejecting or cancelling, we always restore them regardless of whether it was accepted or waiting.
+        if (status === 'rejected' || status === 'cancelled') {
             const restoreSeatsSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
             await client.query(restoreSeatsSql, [seats, requestTripId]);
         }
@@ -747,7 +750,7 @@ export const removeRiderFromTrip = async (request_id: string, requesting_user_id
         const deleteSql = `DELETE FROM ride_requests WHERE id = $1; `;
         await client.query(deleteSql, [request_id]);
 
-        if (status === 'accepted' || status === 'waiting') {
+        if (status === 'waiting') {
             const restoreSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
             await client.query(restoreSql, [seats, trip_id]);
         }

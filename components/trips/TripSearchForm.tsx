@@ -134,7 +134,7 @@ export default function TripSearchForm() {
                 mode="search"
                 from={from}
                 to={to}
-                routeGeometry={(selectedTrip ? selectedTrip.route_geometry : routeGeometry) || null}
+                routeGeometry={selectedTrip?.route_geometry || null}
                 selectedTrip={selectedTrip}
                 activeField={activeField}
                 onMapClick={handleMapClick}
