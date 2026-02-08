@@ -17,6 +17,7 @@ interface UserTripCardProps {
 export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -41,10 +42,11 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
     const handleCancelBooking = async () => {
         setIsLoading(true);
         try {
-            const result = await cancelRideRequestAction(trip.request_id, trip.trip_id);
+            const result = await cancelRideRequestAction(trip.request_id, cancelReason);
             if (result.success) {
                 toast.success(result.message);
                 setShowCancelModal(false);
+                setCancelReason("");
                 onUpdate();
             } else {
                 toast.error(result.message);
@@ -140,6 +142,14 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
                     <p className="text-sm text-slate-400 mb-4">
                         Are you sure you want to cancel your booking?
                     </p>
+
+                    <textarea
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Reason for cancellation (optional)"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 resize-none mb-4"
+                        rows={2}
+                    />
 
                     <div className="flex items-center gap-3 mt-6">
                         <button

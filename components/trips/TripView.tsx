@@ -1,12 +1,13 @@
 "use client";
 
 import TripMap from "@/components/map/TripMap";
-import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiArrowLeft, HiXCircle, HiUserGroup, HiLocationMarker } from "react-icons/hi";
+import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiArrowLeft, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation } from "react-icons/hi";
 import { useState } from "react";
 import { cancelTripAction, cancelRideRequestAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
-import ConfirmationModal from "@/components/UI/ConfirmationModal";
+import Card from "@/components/UI/Card";
+import Overlay from "@/components/UI/Overlay";
 import { TripViewData } from "@/store/types";
 
 interface TripViewClientProps {
@@ -19,6 +20,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const [cancelling, setCancelling] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelMode, setCancelMode] = useState<"trip" | "booking" | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -75,7 +77,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
         setCancelling(true);
         try {
-            const result = await cancelRideRequestAction(currentTrip.my_request.id, currentTrip.trip_id);
+            const result = await cancelRideRequestAction(currentTrip.my_request.id, cancelReason);
             if (result.success) {
                 toast.success(result.message);
             } else {
@@ -86,6 +88,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
         } finally {
             setCancelling(false);
             setShowCancelModal(false);
+            setCancelReason("");
         }
     };
 
@@ -97,7 +100,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
             </div>
 
             {/* Info Sidebar Area */}
-            <div className="w-full md:w-[400px] bg-slate-950 border-l border-white/5 z-10 overflow-y-auto modern-scrollbar order-1 md:order-1 h-1/2 md:h-full">
+            <div className="w-full md:w-100 bg-slate-950 border-l border-white/5 z-10 overflow-y-auto modern-scrollbar order-1 md:order-1 h-1/2 md:h-full">
                 <div className="p-8 space-y-8">
                     {/* Header */}
                     <div>
@@ -129,7 +132,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             <div className="ml-1 pl-4 border-l border-dashed border-slate-800 space-y-6">
                                 {currentTrip.stops.map((stop, index) => (
                                     <div key={stop.id} className="flex items-start gap-4 relative">
-                                        <div className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 shrink-0 -ml-[21px] ring-4 ring-purple-500/10" />
+                                        <div className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 shrink-0 -ml-5.25 ring-4 ring-purple-500/10" />
                                         <div>
                                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Stop {index + 1}</p>
                                             <p className="text-sm text-slate-300 font-medium">{stop.stop_address}</p>
@@ -332,19 +335,55 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                 </div>
             </div>
 
-            <ConfirmationModal
-                isOpen={showCancelModal}
-                onClose={() => !cancelling && setShowCancelModal(false)}
-                onConfirm={cancelMode === 'trip' ? confirmCancelTrip : confirmCancelBooking}
-                title={cancelMode === 'trip' ? "Cancel Entire Trip?" : "Cancel Your Booking?"}
-                message={cancelMode === 'trip'
-                    ? "This will cancel the trip for all riders and cannot be undone. Are you sure?"
-                    : "Are you sure you want to cancel your booking for this trip?"}
-                confirmLabel={cancelMode === 'trip' ? "Yes, Cancel Trip" : "Yes, Cancel Booking"}
-                cancelLabel="Keep it"
-                variant="danger"
-                isLoading={cancelling}
-            />
+            <Overlay isOpen={showCancelModal} onClose={() => !cancelling && setShowCancelModal(false)}>
+                <Card className="relative max-w-md w-full border-white/10 p-6 animate-in zoom-in-95 duration-300 shadow-2xl shadow-black/50">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                            <HiExclamation className="w-5 h-5 text-red-400" />
+                        </div>
+                        <h3 className="text-lg font-black text-white">
+                            {cancelMode === 'trip' ? "Cancel Entire Trip?" : "Cancel Your Booking?"}
+                        </h3>
+                    </div>
+
+                    <p className="text-sm text-slate-400 mb-4">
+                        {cancelMode === 'trip'
+                            ? "This will cancel the trip for all riders and cannot be undone. Are you sure?"
+                            : "Are you sure you want to cancel your booking for this trip?"}
+                    </p>
+
+                    <textarea
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Reason for cancellation (optional)"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 resize-none mb-4"
+                        rows={2}
+                    />
+
+                    <div className="flex items-center gap-3 mt-6">
+                        <button
+                            onClick={() => {
+                                setShowCancelModal(false);
+                                setCancelReason("");
+                            }}
+                            disabled={cancelling}
+                            className="flex-1 px-4 py-2.5 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50"
+                        >
+                            Keep it
+                        </button>
+                        <button
+                            onClick={cancelMode === 'trip' ? confirmCancelTrip : confirmCancelBooking}
+                            disabled={cancelling}
+                            className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-black text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {cancelling && (
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            )}
+                            {cancelMode === 'trip' ? "Yes, Cancel Trip" : "Yes, Cancel Booking"}
+                        </button>
+                    </div>
+                </Card>
+            </Overlay>
         </div>
     );
 }
