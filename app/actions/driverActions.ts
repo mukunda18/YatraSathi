@@ -47,8 +47,8 @@ export async function cancelTripAction(tripId: string, reason?: string) {
     return { success: true, message: "Trip cancelled successfully" };
 }
 
-export async function updateRequestStatusAction(requestId: string, status: "rejected") {
-    if (!requestId || status !== "rejected") {
+export async function updateRequestStatusAction(requestId: string, status: "accepted" | "rejected") {
+    if (!requestId || (status !== "accepted" && status !== "rejected")) {
         return { success: false, message: "Invalid request" };
     }
 
@@ -64,13 +64,13 @@ export async function updateRequestStatusAction(requestId: string, status: "reje
 
     const result = await updateRideRequestStatus(requestId, status, driver.id);
     if (!result) {
-        return { success: false, message: "Failed to reject request." };
+        return { success: false, message: `Failed to ${status} request.` };
     }
 
-    return { success: true, message: "Request rejected successfully" };
+    return { success: true, message: `Request ${status} successfully` };
 }
 
-export async function removeRiderAction(requestId: string) {
+export async function removeRiderAction(requestId: string, reason?: string) {
     if (!requestId) {
         return { success: false, message: "Request ID is required" };
     }
@@ -85,10 +85,10 @@ export async function removeRiderAction(requestId: string) {
         return { success: false, message: "Driver profile not found" };
     }
 
-    const result = await removeRiderFromTrip(requestId, userId);
+    const result = await removeRiderFromTrip(requestId, userId, reason);
     if (!result) {
-        return { success: false, message: "Failed to remove rider. Request may not exist or you are unauthorized." };
+        return { success: false, message: "Failed to cancel ride request. Request may not exist or you are unauthorized." };
     }
 
-    return { success: true, message: "Rider removed successfully" };
+    return { success: true, message: "Ride request cancelled successfully" };
 }

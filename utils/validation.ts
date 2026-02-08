@@ -75,8 +75,15 @@ export const validateTrip = (data: Record<string, any>): ValidationResult => {
         errors.to = "Destination location is required";
     }
 
-    if (!data.travel_date || new Date(data.travel_date) <= new Date()) {
-        errors.date = "Travel date must be in the future";
+    if (!data.travel_date) {
+        errors.date = "Travel date is required";
+    } else {
+        const travelDate = new Date(data.travel_date);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        if (travelDate < now) {
+            errors.date = "Travel date must be today or in the future";
+        }
     }
 
     if (!data.fare_per_seat || Number(data.fare_per_seat) < 0) {

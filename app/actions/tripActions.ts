@@ -147,12 +147,11 @@ export async function cancelTripAction(tripId: string, reason?: string) {
     return { success: false, message: "Failed to cancel trip" };
 }
 
-export async function cancelRideRequestAction(requestId: string, tripId: string) {
-
+export async function cancelRideRequestAction(requestId: string, reason?: string) {
     const userId = await getUserId();
     if (!userId) return { success: false, message: "Unauthorized" };
 
-    const success = await removeRiderFromTrip(requestId, userId);
+    const success = await removeRiderFromTrip(requestId, userId, reason);
 
     if (success) {
         return { success: true, message: "Booking cancelled successfully" };

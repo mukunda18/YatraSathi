@@ -8,6 +8,9 @@ export const setCookie = async (userId: string, time: number) => {
         cookieStore.set("yatrasathi", "", {
             maxAge: 0,
             path: "/",
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
         });
         return;
     }

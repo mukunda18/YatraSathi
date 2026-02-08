@@ -534,6 +534,7 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
                     ORDER BY stop_order
                 ) ts
             ) as stops,
+            (
                 SELECT COALESCE(json_agg(rd), '[]')
                 FROM (
                     SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
@@ -720,7 +721,7 @@ export const updateRideRequestStatus = async (request_id: string, status: string
     }
 };
 
-export const removeRiderFromTrip = async (request_id: string, requesting_user_id?: string): Promise<boolean> => {
+export const removeRiderFromTrip = async (request_id: string, requesting_user_id?: string, reason?: string): Promise<boolean> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -741,15 +742,18 @@ export const removeRiderFromTrip = async (request_id: string, requesting_user_id
 
         const { seats, trip_id, status, rider_id, driver_user_id } = getRes.rows[0];
 
-        if (requesting_user_id && requesting_user_id !== rider_id && requesting_user_id !== driver_user_id) {
+        // Only allow the rider who made the request or the driver of the trip to cancel
+        if (!requesting_user_id || (requesting_user_id !== rider_id && requesting_user_id !== driver_user_id)) {
             await client.query('ROLLBACK');
-            console.error("Unauthorized removal attempt");
+            console.error("Unauthorized cancellation attempt");
             return false;
         }
 
-        const deleteSql = `DELETE FROM ride_requests WHERE id = $1; `;
-        await client.query(deleteSql, [request_id]);
+        
+        const cancelSql = `UPDATE ride_requests SET status = 'cancelled', updated_at = now() WHERE id = $1; `;
+        await client.query(cancelSql, [request_id]);
 
+        // Restore seats if the request was in 'waiting' status
         if (status === 'waiting') {
             const restoreSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
             await client.query(restoreSql, [seats, trip_id]);
@@ -759,7 +763,7 @@ export const removeRiderFromTrip = async (request_id: string, requesting_user_id
         return true;
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Error removing rider from trip:', error);
+        console.error('Error cancelling ride request:', error);
         return false;
     } finally {
         client.release();
