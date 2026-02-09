@@ -100,20 +100,7 @@ export interface Route {
 }
 
 
-export type TableName =
-    | "users"
-    | "drivers"
-    | "trips"
-    | "ride_requests"
-    | "live_trips"
-    | "live_users"
-    | "routes";
-
-export const query = (text: string, params?: any[]) => pool.query(text, params);
-
-// ============================================================================
-// USER QUERIES
-// ============================================================================
+const query = (text: string, params?: any[]) => pool.query(text, params);
 
 export const createUser = async (data: {
     name: string;
@@ -211,11 +198,6 @@ export const updateUserById = async (id: string, data: {
     }
 };
 
-
-// ============================================================================
-// DRIVER QUERIES
-// ============================================================================
-
 export const createDriver = async (data: {
     user_id: string;
     vehicle_number: string;
@@ -242,11 +224,6 @@ export const createDriver = async (data: {
         return;
     }
 };
-
-
-// ============================================================================
-// TRIP QUERIES
-// ============================================================================
 
 export const createTrip = async (data: {
     driver_id: string;
@@ -337,9 +314,6 @@ export const createTrip = async (data: {
     }
 };
 
-
-
-
 export const searchTrips = async (from_location: string, to_location: string): Promise<any[]> => {
     const sql = `
         SELECT 
@@ -398,36 +372,6 @@ export const searchTrips = async (from_location: string, to_location: string): P
     }
 };
 
-export const updateTripStatus = async (id: string, status: string, cancelled_reason?: string): Promise<Trip | undefined> => {
-    const sql = `
-        UPDATE trips 
-        SET status = $1, 
-            cancelled_at = CASE WHEN $1 = 'cancelled' THEN now() ELSE cancelled_at END,
-            cancelled_reason = $2
-        WHERE id = $3
-        RETURNING 
-            id, driver_id, 
-            ST_AsText(from_location) as from_location, from_address,
-            ST_AsText(to_location) as to_location, to_address,
-            route_id,
-            travel_date, fare_per_seat, total_seats, available_seats,
-            description, status, cancelled_at, cancelled_reason,
-            created_at, updated_at;
-    `;
-    try {
-        const res = await query(sql, [status, cancelled_reason ?? null, id]);
-        return res.rows[0];
-    } catch (error) {
-        console.error('Error updating trip status:', error);
-        return;
-    }
-};
-
-
-// ============================================================================
-// RIDE REQUEST QUERIES
-// ============================================================================
-
 export const createRideRequest = async (data: {
     rider_id: string;
     trip_id: string;
@@ -442,13 +386,11 @@ export const createRideRequest = async (data: {
     try {
         await client.query('BEGIN');
 
-        // 1. Check seat availability
         const tripSql = `SELECT available_seats FROM trips WHERE id = $1 FOR UPDATE`;
         const tripRes = await client.query(tripSql, [data.trip_id]);
         if (tripRes.rowCount === 0) throw new Error('Trip not found');
         if (tripRes.rows[0].available_seats < data.seats) throw new Error('Not enough seats available');
 
-        // 2. Insert request with 'waiting' status
         const sql = `
             INSERT INTO ride_requests (
                 rider_id, trip_id, pickup_location, pickup_address,
@@ -472,7 +414,6 @@ export const createRideRequest = async (data: {
             data.total_fare
         ]);
 
-        // 3. Update trip seats
         const updateTripSql = `UPDATE trips SET available_seats = available_seats - $1 WHERE id = $2`;
         await client.query(updateTripSql, [data.seats, data.trip_id]);
 
@@ -582,10 +523,6 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
     }
 };
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
 export const getDriverByUserId = async (user_id: string): Promise<Driver | undefined> => {
     const sql = `SELECT * FROM drivers WHERE user_id = $1;`;
     try {
@@ -613,10 +550,22 @@ export const getOwnedTrip = async (tripId: string, userId: string): Promise<Trip
     }
 };
 
+const verifyRideRequestOwnership = async (client: any, request_id: string, driver_id: string): Promise<boolean> => {
+    const sql = `
+        SELECT rr.id 
+        FROM ride_requests rr
+        JOIN trips t ON rr.trip_id = t.id
+        WHERE rr.id = $1 AND t.driver_id = $2
+    `;
+    const res = await client.query(sql, [request_id, driver_id]);
+    return res.rowCount !== 0;
+};
 
-// ============================================================================
-// DRIVER DASHBOARD QUERIES
-// ============================================================================
+const updateTripAvailableSeats = async (client: any, trip_id: string, seatDelta: number): Promise<void> => {
+    const sql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2`;
+    await client.query(sql, [seatDelta, trip_id]);
+};
+
 
 export const getDriverTripsWithRequests = async (driver_id: string): Promise<any[]> => {
     const sql = `
@@ -682,15 +631,7 @@ export const updateRideRequestStatus = async (request_id: string, status: string
     try {
         await client.query('BEGIN');
 
-        // Verify driver owns the trip
-        const checkOwnershipSql = `
-            SELECT t.id 
-            FROM ride_requests rr
-            JOIN trips t ON rr.trip_id = t.id
-            WHERE rr.id = $1 AND t.driver_id = $2
-        `;
-        const ownershipRes = await client.query(checkOwnershipSql, [request_id, driver_id]);
-        if (ownershipRes.rowCount === 0) {
+        if (!await verifyRideRequestOwnership(client, request_id, driver_id)) {
             await client.query('ROLLBACK');
             return false;
         }
@@ -706,8 +647,7 @@ export const updateRideRequestStatus = async (request_id: string, status: string
         const { seats, trip_id: requestTripId } = res.rows[0];
 
         if (status === 'rejected' || status === 'cancelled') {
-            const restoreSeatsSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
-            await client.query(restoreSeatsSql, [seats, requestTripId]);
+            await updateTripAvailableSeats(client, requestTripId, seats);
         }
 
         await client.query('COMMIT');
@@ -742,21 +682,16 @@ export const removeRiderFromTrip = async (request_id: string, requesting_user_id
 
         const { seats, trip_id, status, rider_id, driver_user_id } = getRes.rows[0];
 
-        // Only allow the rider who made the request or the driver of the trip to cancel
         if (!requesting_user_id || (requesting_user_id !== rider_id && requesting_user_id !== driver_user_id)) {
             await client.query('ROLLBACK');
             console.error("Unauthorized cancellation attempt");
             return false;
         }
 
-        
-        const cancelSql = `UPDATE ride_requests SET status = 'cancelled', updated_at = now() WHERE id = $1; `;
-        await client.query(cancelSql, [request_id]);
+        await client.query(`UPDATE ride_requests SET status = 'cancelled', updated_at = now() WHERE id = $1`, [request_id]);
 
-        // Restore seats if the request was in 'waiting' status
         if (status === 'waiting') {
-            const restoreSql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2; `;
-            await client.query(restoreSql, [seats, trip_id]);
+            await updateTripAvailableSeats(client, trip_id, seats);
         }
 
         await client.query('COMMIT');
