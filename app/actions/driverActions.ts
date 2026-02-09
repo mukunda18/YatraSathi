@@ -1,26 +1,21 @@
 "use server";
 
 import {
-    getDriverByUserId,
     getDriverTripsWithRequests,
     cancelTripById,
     updateRideRequestStatus,
-    removeRiderFromTrip
+    removeRiderFromTrip,
 } from "@/db/db";
 import { getUserId } from "./authActions";
+import { getAuthenticatedDriver } from "./authHelpers";
 
 export async function getDriverTripsAction() {
-    const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized", trips: [] };
+    const { driver, error } = await getAuthenticatedDriver();
+    if (error) {
+        return { success: false, message: error.message, trips: [] };
     }
 
-    const driver = await getDriverByUserId(userId);
-    if (!driver) {
-        return { success: false, message: "Driver profile not found", trips: [] };
-    }
-
-    const trips = await getDriverTripsWithRequests(driver.id);
+    const trips = await getDriverTripsWithRequests(driver!.id);
     return { success: true, trips };
 }
 
@@ -29,17 +24,10 @@ export async function cancelTripAction(tripId: string, reason?: string) {
         return { success: false, message: "Trip ID is required" };
     }
 
-    const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized" };
-    }
+    const { driver, error } = await getAuthenticatedDriver();
+    if (error) return error;
 
-    const driver = await getDriverByUserId(userId);
-    if (!driver) {
-        return { success: false, message: "Driver profile not found" };
-    }
-
-    const result = await cancelTripById(tripId, reason, driver.id);
+    const result = await cancelTripById(tripId, reason, driver!.id);
     if (!result) {
         return { success: false, message: "Failed to cancel trip. It may already be cancelled, completed, or you do not own it." };
     }
@@ -52,17 +40,10 @@ export async function updateRequestStatusAction(requestId: string, status: "acce
         return { success: false, message: "Invalid request" };
     }
 
-    const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized" };
-    }
+    const { driver, error } = await getAuthenticatedDriver();
+    if (error) return error;
 
-    const driver = await getDriverByUserId(userId);
-    if (!driver) {
-        return { success: false, message: "Driver profile not found" };
-    }
-
-    const result = await updateRideRequestStatus(requestId, status, driver.id);
+    const result = await updateRideRequestStatus(requestId, status, driver!.id);
     if (!result) {
         return { success: false, message: `Failed to ${status} request.` };
     }
@@ -75,17 +56,11 @@ export async function removeRiderAction(requestId: string, reason?: string) {
         return { success: false, message: "Request ID is required" };
     }
 
+    const { driver, error } = await getAuthenticatedDriver();
+    if (error) return error;
+
     const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized" };
-    }
-
-    const driver = await getDriverByUserId(userId);
-    if (!driver) {
-        return { success: false, message: "Driver profile not found" };
-    }
-
-    const result = await removeRiderFromTrip(requestId, userId, reason);
+    const result = await removeRiderFromTrip(requestId, userId || undefined, reason);
     if (!result) {
         return { success: false, message: "Failed to cancel ride request. Request may not exist or you are unauthorized." };
     }

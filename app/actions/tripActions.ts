@@ -1,8 +1,8 @@
 "use server";
 
-import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getDriverByUserId, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
-import { getUserId } from "./authActions";
+import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
 import { validateTrip } from "@/utils/validation";
+import { getAuthenticatedUserId, getAuthenticatedDriver } from "./authHelpers";
 
 export async function createTripAction(data: {
     from_location: { lat: number; lng: number };
@@ -16,15 +16,8 @@ export async function createTripAction(data: {
     stops?: { location: { lat: number; lng: number }; address: string }[];
     route?: [number, number][];
 }) {
-    const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized" };
-    }
-
-    const driver = await getDriverByUserId(userId);
-    if (!driver) {
-        return { success: false, message: "Driver profile not found." };
-    }
+    const { driver, error } = await getAuthenticatedDriver();
+    if (error) return error;
 
     const validation = validateTrip(data);
     if (!validation.success) {
@@ -35,7 +28,7 @@ export async function createTripAction(data: {
     const toPoint = `POINT(${data.to_location.lng} ${data.to_location.lat})`;
 
     const trip = await createTrip({
-        driver_id: driver.id,
+        driver_id: driver!.id,
         from_location: fromPoint,
         from_address: data.from_address,
         to_location: toPoint,
@@ -68,13 +61,11 @@ export async function createRideRequestAction(data: {
     seats: number;
     total_fare: number;
 }) {
-    const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized" };
-    }
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
 
     // Prevent driver from joining their own trip
-    const tripResult = await getTripViewById(data.trip_id, userId);
+    const tripResult = await getTripViewById(data.trip_id, userId!);
     if (tripResult && tripResult.driver_user_id === userId) {
         return { success: false, message: "You cannot join your own trip." };
     }
@@ -90,7 +81,7 @@ export async function createRideRequestAction(data: {
     }
 
     const request = await createRideRequest({
-        rider_id: userId,
+        rider_id: userId!,
         trip_id: data.trip_id,
         pickup_location: pickupPoint,
         pickup_address: data.pickup_address,
@@ -108,17 +99,17 @@ export async function createRideRequestAction(data: {
 }
 
 export async function getJoinedTripsAction() {
-    const userId = await getUserId();
-    if (!userId) {
-        return { success: false, message: "Unauthorized", trips: [] };
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) {
+        return { success: false, message: error.message, trips: [] };
     }
 
-    const trips = await getJoinedTripsByRiderId(userId);
+    const trips = await getJoinedTripsByRiderId(userId!);
     return { success: true, trips };
 }
 
 export async function getTripViewAction(tripId: string) {
-    const userId = await getUserId();
+    const { userId } = await getAuthenticatedUserId();
 
     const trip = await getTripViewById(tripId, userId || undefined);
 
@@ -130,10 +121,10 @@ export async function getTripViewAction(tripId: string) {
 }
 
 export async function cancelTripAction(tripId: string, reason?: string) {
-    const userId = await getUserId();
-    if (!userId) return { success: false, message: "Unauthorized" };
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
 
-    const trip = await getOwnedTrip(tripId, userId);
+    const trip = await getOwnedTrip(tripId, userId!);
     if (!trip) {
         return { success: false, message: "You are not authorized to cancel this trip or it does not exist." };
     }
@@ -148,10 +139,10 @@ export async function cancelTripAction(tripId: string, reason?: string) {
 }
 
 export async function cancelRideRequestAction(requestId: string, reason?: string) {
-    const userId = await getUserId();
-    if (!userId) return { success: false, message: "Unauthorized" };
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
 
-    const success = await removeRiderFromTrip(requestId, userId, reason);
+    const success = await removeRiderFromTrip(requestId, userId || undefined, reason);
 
     if (success) {
         return { success: true, message: "Booking cancelled successfully" };
