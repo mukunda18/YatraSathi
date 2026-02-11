@@ -107,9 +107,15 @@ export default function LocationField({
             lng: parseFloat(suggestion.lon),
             address: suggestion.display_name
         };
-        if (type === "from") setFrom(loc);
-        else if (type === "to") setTo(loc);
-        else updateStop(type, loc);
+        if (type === "from") {
+            setFrom(loc);
+            setFromAddress(suggestion.display_name);
+        } else if (type === "to") {
+            setTo(loc);
+            setToAddress(suggestion.display_name);
+        } else {
+            updateStop(type, loc);
+        }
         setInputValue(suggestion.display_name);
         setShowDropdown(false);
         setActiveField(null);
@@ -143,16 +149,28 @@ export default function LocationField({
                         const data = await res.json();
                         const address = data.display_name || "Current Location";
                         const tripLoc = { ...loc, address };
-                        if (type === "from") setFrom(tripLoc);
-                        else if (type === "to") setTo(tripLoc);
-                        else updateStop(type, tripLoc);
+                        if (type === "from") {
+                            setFrom(tripLoc);
+                            setFromAddress(address);
+                        } else if (type === "to") {
+                            setTo(tripLoc);
+                            setToAddress(address);
+                        } else {
+                            updateStop(type, tripLoc);
+                        }
                         setInputValue(address);
                     } catch (error) {
                         const address = `Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`;
                         const tripLoc = { ...loc, address };
-                        if (type === "from") setFrom(tripLoc);
-                        else if (type === "to") setTo(tripLoc);
-                        else updateStop(type, tripLoc);
+                        if (type === "from") {
+                            setFrom(tripLoc);
+                            setFromAddress(address);
+                        } else if (type === "to") {
+                            setTo(tripLoc);
+                            setToAddress(address);
+                        } else {
+                            updateStop(type, tripLoc);
+                        }
                         setInputValue(address);
                     }
                 },
