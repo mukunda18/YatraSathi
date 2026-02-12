@@ -102,15 +102,10 @@ export default function TripMap({
         routeGlowColor = "#60a5fa";
     }
 
-    if (mode === "view" && trip?.route_geojson) {
-        try {
-            const geojson = JSON.parse(trip.route_geojson);
-            displayRoute = geojson.coordinates;
-            routeColor = "#10b981";
-            routeGlowColor = "#34d399";
-        } catch (e) {
-            console.error("Failed to parse route geojson", e);
-        }
+    if (mode === "view" && trip?.route_geometry) {
+        displayRoute = trip.route_geometry;
+        routeColor = "#10b981";
+        routeGlowColor = "#34d399";
     }
 
     const pickupPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.pickup_route_point) : null;

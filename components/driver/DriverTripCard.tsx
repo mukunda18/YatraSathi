@@ -49,27 +49,10 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         }
     };
 
-    const handleUpdateTripStatus = async (status: 'ongoing' | 'completed') => {
+    const handleStartTrip = async () => {
         setIsLoading(true);
         try {
-            const result = await updateTripStatusAction(trip.trip_id, status);
-            if (result.success) {
-                toast.success(result.message);
-                onUpdate();
-                if (status === 'ongoing') {
-                }
-            } else {
-                toast.error(result.message);
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleRejectRequest = async (requestId: string) => {
-        setIsLoading(true);
-        try {
-            const result = await updateRequestStatusAction(requestId, "rejected");
+            const result = await updateTripStatusAction(trip.trip_id, 'ongoing');
             if (result.success) {
                 toast.success(result.message);
                 onUpdate();
@@ -144,7 +127,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                         <div className="flex items-center gap-2">
                             {trip.trip_status === 'scheduled' && (
                                 <button
-                                    onClick={() => handleUpdateTripStatus('ongoing')}
+                                    onClick={handleStartTrip}
                                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
                                 >
                                     Start Trip
@@ -158,12 +141,6 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                     >
                                         Live
                                     </Link>
-                                    <button
-                                        onClick={() => handleUpdateTripStatus('completed')}
-                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
-                                    >
-                                        Complete Trip
-                                    </button>
                                 </>
                             )}
                             {trip.trip_status === 'scheduled' && (
@@ -237,9 +214,12 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                             )}
                                             {request.status === "waiting" && trip.trip_status === "scheduled" && (
                                                 <button
-                                                    onClick={() => handleRejectRequest(request.request_id)}
+                                                    onClick={() => {
+                                                        setSelectedRequestId(request.request_id);
+                                                        setShowRemoveRiderModal(true);
+                                                    }}
                                                     className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                                                    title="Remove Rider"
+                                                    title="Cancel Request"
                                                 >
                                                     <HiX className="w-3.5 h-3.5" />
                                                 </button>
@@ -314,7 +294,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                     </div>
 
                     <p className="text-sm text-slate-400 mb-4">
-                        Are you sure you want to cancel this trip? All pending requests will be rejected.
+                        Are you sure you want to cancel this trip? All pending requests will be cancelled.
                     </p>
 
                     <textarea

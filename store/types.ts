@@ -70,7 +70,7 @@ export interface TripViewData {
     vehicle_type: string;
     vehicle_number: string;
     vehicle_info: any;
-    route_geojson: string | null;
+    route_geometry: [number, number][] | null;
     stops: {
         id: string;
         stop_address: string;
