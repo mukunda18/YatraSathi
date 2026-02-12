@@ -384,15 +384,36 @@ export const createRideRequest = async (data: {
     drop_address: string;
     seats: number;
     total_fare: number;
-}): Promise<RideRequest | undefined> => {
+}): Promise<{ success: boolean; message?: string; request?: RideRequest }> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        const tripSql = `SELECT available_seats FROM trips WHERE id = $1 FOR UPDATE`;
+        const tripSql = `
+            SELECT t.available_seats, d.user_id as driver_user_id 
+            FROM trips t
+            JOIN drivers d ON t.driver_id = d.id
+            WHERE t.id = $1 
+            FOR UPDATE OF t
+        `;
         const tripRes = await client.query(tripSql, [data.trip_id]);
-        if (tripRes.rowCount === 0) throw new Error('Trip not found');
-        if (tripRes.rows[0].available_seats < data.seats) throw new Error('Not enough seats available');
+
+        if (tripRes.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return { success: false, message: 'Trip not found' };
+        }
+
+        const { available_seats, driver_user_id } = tripRes.rows[0];
+
+        if (driver_user_id === data.rider_id) {
+            await client.query('ROLLBACK');
+            return { success: false, message: 'You cannot join your own trip.' };
+        }
+
+        if (available_seats < data.seats) {
+            await client.query('ROLLBACK');
+            return { success: false, message: 'Not enough seats available' };
+        }
 
         const sql = `
             INSERT INTO ride_requests (
@@ -421,11 +442,11 @@ export const createRideRequest = async (data: {
         await client.query(updateTripSql, [data.seats, data.trip_id]);
 
         await client.query('COMMIT');
-        return res.rows[0];
+        return { success: true, request: res.rows[0] };
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error creating ride request:', error);
-        return;
+        return { success: false, message: 'Failed to create ride request. You might already have a request for this trip.' };
     } finally {
         client.release();
     }
@@ -553,16 +574,6 @@ export const getOwnedTrip = async (tripId: string, userId: string): Promise<Trip
     }
 };
 
-const verifyRideRequestOwnership = async (client: any, request_id: string, driver_id: string): Promise<boolean> => {
-    const sql = `
-        SELECT rr.id 
-        FROM ride_requests rr
-        JOIN trips t ON rr.trip_id = t.id
-        WHERE rr.id = $1 AND t.driver_id = $2
-    `;
-    const res = await client.query(sql, [request_id, driver_id]);
-    return res.rowCount !== 0;
-};
 
 const updateTripAvailableSeats = async (client: any, trip_id: string, seatDelta: number): Promise<void> => {
     const sql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2`;
@@ -629,18 +640,62 @@ export const cancelTripById = async (trip_id: string, reason?: string, driver_id
     }
 };
 
-export const updateTripStatus = async (tripId: string, status: 'scheduled' | 'ongoing' | 'completed', driverId: string): Promise<boolean> => {
+export const updateTripStatus = async (
+    tripId: string,
+    status: 'scheduled' | 'ongoing' | 'completed',
+    driverId: string
+): Promise<{ success: boolean; message?: string }> => {
     const sql = `
+        WITH driver_check AS (
+            SELECT 
+                EXISTS (SELECT 1 FROM trips WHERE driver_id = $3 AND status = 'ongoing' AND id != $1) as has_ongoing,
+                (SELECT travel_date FROM trips WHERE id = $1) as travel_date
+        )
         UPDATE trips 
         SET status = $2, updated_at = now() 
-        WHERE id = $1 AND driver_id = $3;
+        WHERE id = $1 
+          AND driver_id = $3
+          AND (
+            $2 != 'ongoing' OR (
+                NOT (SELECT has_ongoing FROM driver_check)
+                AND (SELECT travel_date FROM driver_check) <= now()
+            )
+          )
+        RETURNING 
+            (SELECT has_ongoing FROM driver_check) as blocked_by_ongoing,
+            ((SELECT travel_date FROM driver_check) > now()) as is_too_early;
     `;
     try {
         const res = await query(sql, [tripId, status, driverId]);
-        return (res.rowCount ?? 0) > 0;
+
+        if ((res.rowCount ?? 0) > 0) {
+            return { success: true };
+        }
+
+        const checkSql = `
+            SELECT 
+                status,
+                travel_date,
+                EXISTS (SELECT 1 FROM trips WHERE driver_id = $2 AND status = 'ongoing') as has_ongoing
+            FROM trips 
+            WHERE id = $1 AND driver_id = $2
+        `;
+        const checkRes = await query(checkSql, [tripId, driverId]);
+
+        if (checkRes.rowCount === 0) {
+            return { success: false, message: "Trip not found or unauthorized." };
+        }
+
+        const info = checkRes.rows[0];
+        if (status === 'ongoing') {
+            if (info.has_ongoing) return { success: false, message: "You already have an ongoing trip." };
+            if (new Date(info.travel_date) > new Date()) return { success: false, message: "Too early to start the trip." };
+        }
+
+        return { success: false, message: "Failed to update trip status." };
     } catch (error) {
         console.error('Error updating trip status:', error);
-        return false;
+        return { success: false, message: "Database error occurred." };
     }
 };
 
@@ -664,13 +719,15 @@ export const updateRideRequestStatus = async (request_id: string, status: 'waiti
     try {
         await client.query('BEGIN');
 
-        if (!await verifyRideRequestOwnership(client, request_id, driver_id)) {
-            await client.query('ROLLBACK');
-            return false;
-        }
+        const currentSql = `
+            SELECT rr.status, rr.seats, rr.trip_id 
+            FROM ride_requests rr
+            JOIN trips t ON rr.trip_id = t.id
+            WHERE rr.id = $1 AND t.driver_id = $2
+            FOR UPDATE OF rr
+        `;
+        const currentRes = await client.query(currentSql, [request_id, driver_id]);
 
-        const currentSql = `SELECT status, seats, trip_id FROM ride_requests WHERE id = $1 FOR UPDATE`;
-        const currentRes = await client.query(currentSql, [request_id]);
         if (currentRes.rowCount === 0) {
             await client.query('ROLLBACK');
             return false;

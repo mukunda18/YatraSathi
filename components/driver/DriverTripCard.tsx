@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { cancelTripAction, updateRequestStatusAction, removeRiderAction, updateTripStatusAction } from "@/app/actions/driverActions";
+import { cancelTripAction, updateRequestStatusAction, updateTripStatusAction } from "@/app/actions/driverActions";
+import { cancelBookingAction } from "@/app/actions/tripActions";
 import { HiX, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
 import { toast } from "sonner";
 import Overlay from "../UI/Overlay";
@@ -68,7 +69,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         if (!selectedRequestId) return;
         setIsLoading(true);
         try {
-            const result = await removeRiderAction(selectedRequestId, removeReason);
+            const result = await cancelBookingAction(selectedRequestId, removeReason);
             if (result.success) {
                 toast.success(result.message);
                 setShowRemoveRiderModal(false);
