@@ -1,10 +1,11 @@
 "use client";
 
 import TripMap from "@/components/map/TripMap";
-import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiArrowLeft, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
+import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
 import Link from "next/link";
 import { cancelTripAction, cancelRideRequestAction } from "@/app/actions/tripActions";
+import { updateTripStatusAction } from "@/app/actions/driverActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
 import Card from "@/components/UI/Card";
@@ -22,6 +23,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelMode, setCancelMode] = useState<"trip" | "booking" | null>(null);
     const [cancelReason, setCancelReason] = useState("");
+    const [isStatusLoading, setIsStatusLoading] = useState(false);
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -80,6 +82,23 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
             setCancelling(false);
             setShowCancelModal(false);
             setCancelReason("");
+        }
+    };
+
+    const handleStartTrip = async () => {
+        setIsStatusLoading(true);
+        try {
+            const result = await updateTripStatusAction(currentTrip.trip_id, 'ongoing');
+            if (result.success) {
+                toast.success(result.message);
+                window.location.reload();
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            toast.error("Failed to start trip");
+        } finally {
+            setIsStatusLoading(false);
         }
     };
 
@@ -300,6 +319,29 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
                     {/* Actions */}
                     <div className="pt-4 space-y-3">
+                        {isDriver && currentTrip.trip_status === 'scheduled' && (
+                            <button
+                                onClick={handleStartTrip}
+                                disabled={isStatusLoading}
+                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                {isStatusLoading ? (
+                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    "Start Trip"
+                                )}
+                            </button>
+                        )}
+
+                        {isDriver && currentTrip.trip_status === 'ongoing' && (
+                            <Link
+                                href={`/live/${currentTrip.trip_id}`}
+                                className="w-full py-4 bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 rounded-2xl text-xs font-black uppercase tracking-widest transition-all animate-pulse text-center block"
+                            >
+                                Live Tracking
+                            </Link>
+                        )}
+
                         {isDriver && currentTrip.trip_status !== 'cancelled' && currentTrip.trip_status !== 'completed' && (
                             <button
                                 onClick={handleCancelTrip}

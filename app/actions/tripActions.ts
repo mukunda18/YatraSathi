@@ -1,6 +1,7 @@
 "use server";
 
 import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
+import { TripViewData } from "@/store/types";
 import { validateTrip } from "@/utils/validation";
 import { getAuthenticatedUserId, getAuthenticatedDriver } from "./authHelpers";
 
@@ -117,7 +118,28 @@ export async function getTripViewAction(tripId: string) {
         return { success: false, message: "Trip not found", trip: null };
     }
 
-    return { success: true, trip };
+    // Parse route_geojson into route_geometry standard
+    let route_geometry: [number, number][] | null = null;
+    if (trip.route_geojson) {
+        try {
+            const geojson = JSON.parse(trip.route_geojson);
+            if (geojson.type === 'LineString') {
+                route_geometry = geojson.coordinates;
+            }
+        } catch (e) {
+            console.error("Error parsing GeoJSON in getTripViewAction", e);
+        }
+    }
+
+    const { route_geojson, ...rest } = trip;
+
+    return {
+        success: true,
+        trip: {
+            ...rest,
+            route_geometry
+        } as TripViewData
+    };
 }
 
 export async function cancelTripAction(tripId: string, reason?: string) {

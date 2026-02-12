@@ -1,7 +1,7 @@
 import { pool } from "./index";
 
 export type TripStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
-export type RideRequestStatus = 'waiting' | 'onboard' | 'dropedoff' | 'cancelled' | 'rejected';
+export type RideRequestStatus = 'waiting' | 'onboard' | 'dropedoff' | 'cancelled';
 
 export interface User {
     id: string;
@@ -659,7 +659,7 @@ export const hasOngoingTrip = async (driverId: string): Promise<boolean> => {
     }
 };
 
-export const updateRideRequestStatus = async (request_id: string, status: 'waiting' | 'onboard' | 'dropedoff' | 'rejected' | 'cancelled', driver_id: string): Promise<boolean> => {
+export const updateRideRequestStatus = async (request_id: string, status: 'waiting' | 'onboard' | 'dropedoff' | 'cancelled', driver_id: string): Promise<boolean> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -677,12 +677,10 @@ export const updateRideRequestStatus = async (request_id: string, status: 'waiti
         }
         const { status: oldStatus, seats, trip_id: requestTripId } = currentRes.rows[0];
 
-        const finalStatus = status === 'rejected' ? 'cancelled' : status;
-
         const updateSql = `UPDATE ride_requests SET status = $2, updated_at = now() WHERE id = $1`;
-        await client.query(updateSql, [request_id, finalStatus]);
+        await client.query(updateSql, [request_id, status]);
 
-        if ((oldStatus === 'waiting' && (status === 'rejected' || status === 'cancelled')) ||
+        if ((oldStatus === 'waiting' && status === 'cancelled') ||
             (oldStatus === 'onboard' && status === 'dropedoff')) {
             await updateTripAvailableSeats(client, requestTripId, seats);
         }

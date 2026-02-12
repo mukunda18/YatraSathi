@@ -26,8 +26,9 @@ export async function searchTripsAction(data: {
                 }
             }
 
+            const { route_geojson, ...rest } = trip;
             return {
-                ...trip,
+                ...rest,
                 route_geometry: coordinates
             };
         });

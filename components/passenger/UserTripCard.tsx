@@ -29,8 +29,6 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
         });
     };
 
-
-
     const handleCancelBooking = async () => {
         setIsLoading(true);
         try {
