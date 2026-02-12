@@ -35,7 +35,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "waiting": return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+            case "waiting": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
             case "accepted": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
             case "completed": return "text-blue-400 bg-blue-500/10 border-blue-500/20";
             case "cancelled": return "text-red-400 bg-red-500/10 border-red-500/20";
@@ -268,7 +268,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-bold text-slate-500">Status</span>
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${getStatusColor(currentTrip.my_request.status)}`}>
-                                        {currentTrip.my_request.status}
+                                        {currentTrip.my_request.status === 'waiting' ? 'Joined' : currentTrip.my_request.status}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">

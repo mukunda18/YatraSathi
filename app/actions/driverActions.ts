@@ -35,8 +35,8 @@ export async function cancelTripAction(tripId: string, reason?: string) {
     return { success: true, message: "Trip cancelled successfully" };
 }
 
-export async function updateRequestStatusAction(requestId: string, status: "accepted" | "rejected") {
-    if (!requestId || (status !== "accepted" && status !== "rejected")) {
+export async function updateRequestStatusAction(requestId: string, status: "rejected") {
+    if (!requestId || status !== "rejected") {
         return { success: false, message: "Invalid request" };
     }
 

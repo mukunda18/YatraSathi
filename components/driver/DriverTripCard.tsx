@@ -68,21 +68,6 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         }
     };
 
-    const handleAcceptRequest = async (requestId: string) => {
-        setIsLoading(true);
-        try {
-            const result = await updateRequestStatusAction(requestId, "accepted");
-            if (result.success) {
-                toast.success(result.message);
-                onUpdate();
-            } else {
-                toast.error(result.message);
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleRejectRequest = async (requestId: string) => {
         setIsLoading(true);
         try {
@@ -117,7 +102,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         }
     };
 
-    const waitingRequests = trip.ride_requests.filter((r: any) => r.status === "waiting");
+    const waitingRequests = trip.ride_requests.filter((r: any) => r.status === "waiting" || r.status === "accepted");
 
     return (
         <>
@@ -130,8 +115,8 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                     {trip.trip_status}
                                 </span>
                                 {waitingRequests.length > 0 && (
-                                    <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[9px] font-black uppercase tracking-widest text-amber-400">
-                                        {waitingRequests.length} pending
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest text-emerald-400">
+                                        {waitingRequests.length} Joined
                                     </span>
                                 )}
                             </div>
@@ -186,8 +171,8 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-sm font-bold text-white">{request.rider_name}</span>
-                                            <span className={`text-[9px] font-bold uppercase ${getRequestStatusColor(request.status)}`}>
-                                                {request.status}
+                                            <span className={`text-[9px] font-bold uppercase ${request.status === 'waiting' ? 'text-emerald-400' : getRequestStatusColor(request.status)}`}>
+                                                {request.status === 'waiting' ? 'Joined' : request.status}
                                             </span>
                                         </div>
                                         <p className="text-[10px] text-slate-500 truncate">
@@ -209,37 +194,17 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                             </a>
                                         )}
 
-                                        {request.status === "waiting" && trip.trip_status === "scheduled" && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleAcceptRequest(request.request_id)}
-                                                    className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                                                    title="Accept"
-                                                >
-                                                    <HiCheck className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRejectRequest(request.request_id)}
-                                                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                                                    title="Reject"
-                                                >
-                                                    <HiX className="w-3.5 h-3.5" />
-                                                </button>
-                                            </>
-                                        )}
-
-                                        {request.status === "accepted" && trip.trip_status === "scheduled" && (
+                                        {(request.status === "waiting" || request.status === "accepted") && trip.trip_status === "scheduled" && (
                                             <button
-                                                onClick={() => {
-                                                    setSelectedRequestId(request.request_id);
-                                                    setShowRemoveRiderModal(true);
-                                                }}
+                                                onClick={() => handleRejectRequest(request.request_id)}
                                                 className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
                                                 title="Remove Rider"
                                             >
-                                                <HiTrash className="w-3.5 h-3.5" />
+                                                <HiX className="w-3.5 h-3.5" />
                                             </button>
                                         )}
+
+
                                     </div>
                                 </div>
                             </div>
