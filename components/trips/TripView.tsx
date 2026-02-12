@@ -1,8 +1,9 @@
 "use client";
 
 import TripMap from "@/components/map/TripMap";
-import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiArrowLeft, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation } from "react-icons/hi";
+import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiArrowLeft, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
+import Link from "next/link";
 import { cancelTripAction, cancelRideRequestAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
@@ -98,6 +99,15 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             <span className={`status-badge status-${currentTrip.trip_status}`}>
                                 {currentTrip.trip_status}
                             </span>
+                            {currentTrip.trip_status === 'ongoing' && (
+                                <Link
+                                    href={`/live/${currentTrip.trip_id}`}
+                                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 animate-pulse transition-all hover:bg-red-500/20"
+                                >
+                                    <HiStatusOnline className="w-4 h-4 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Live Tracking</span>
+                                </Link>
+                            )}
                             <div className="flex items-center gap-1.5 text-slate-500">
                                 <HiClock className="w-4 h-4" />
                                 <span className="text-[11px] font-bold">{formatDate(currentTrip.travel_date)}</span>

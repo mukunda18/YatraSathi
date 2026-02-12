@@ -1,7 +1,7 @@
 import { pool } from "./index";
 
 export type TripStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
-export type RideRequestStatus = 'waiting' | 'onboard' | 'dropedoff' | 'cancelled';
+export type RideRequestStatus = 'waiting' | 'onboard' | 'dropedoff' | 'cancelled' | 'rejected';
 
 export interface User {
     id: string;
@@ -640,6 +640,21 @@ export const updateTripStatus = async (tripId: string, status: 'scheduled' | 'on
         return (res.rowCount ?? 0) > 0;
     } catch (error) {
         console.error('Error updating trip status:', error);
+        return false;
+    }
+};
+
+export const hasOngoingTrip = async (driverId: string): Promise<boolean> => {
+    const sql = `
+        SELECT id FROM trips 
+        WHERE driver_id = $1 AND status = 'ongoing'
+        LIMIT 1;
+    `;
+    try {
+        const res = await query(sql, [driverId]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error checking ongoing trip:', error);
         return false;
     }
 };

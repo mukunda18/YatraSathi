@@ -12,6 +12,7 @@ import RouteLayer from "./ui/RouteLayer";
 import TripMarker from "./ui/TripMarker";
 import RiderMarker from "./ui/RiderMarker";
 import IndicatorMarker from "./ui/IndicatorMarker";
+import { useLocationStore } from "@/store/locationStore";
 
 interface TripMapProps {
     mode?: "plan" | "search" | "view";
@@ -21,6 +22,7 @@ interface TripMapProps {
     routeGeometry?: [number, number][] | null;
     selectedTrip?: TripSearchResult | null;
     trip?: any | null;
+    driverLocation?: { lat: number, lng: number } | null;
     activeField?: "from" | "to" | string | null;
     onMapClick?: (lat: number, lng: number) => void;
 }
@@ -33,10 +35,12 @@ export default function TripMap({
     routeGeometry,
     selectedTrip = null,
     trip = null,
+    driverLocation = null,
     activeField = null,
     onMapClick
 }: TripMapProps) {
     const router = useRouter();
+    const { latitude, longitude } = useLocationStore();
     const [viewState, setViewState] = useState({
         longitude: 85.324,
         latitude: 27.7172,
@@ -174,6 +178,15 @@ export default function TripMap({
                                 />
                             </div>
                         ))}
+
+                        {(driverLocation || (latitude && longitude)) && (
+                            <IndicatorMarker
+                                longitude={driverLocation?.lng || longitude!}
+                                latitude={driverLocation?.lat || latitude!}
+                                label={driverLocation ? "Driver" : "You"}
+                                type="pickup"
+                            />
+                        )}
                     </>
                 )}
 

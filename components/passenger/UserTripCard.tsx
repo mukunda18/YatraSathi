@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cancelRideRequestAction } from "@/app/actions/tripActions";
-import { HiX, HiLocationMarker, HiClock, HiCurrencyRupee, HiUser, HiExclamation, HiStar } from "react-icons/hi";
+import { HiX, HiLocationMarker, HiClock, HiCurrencyRupee, HiUser, HiExclamation, HiStar, HiStatusOnline } from "react-icons/hi";
 import { toast } from "sonner";
 import Overlay from "../UI/Overlay";
 import Card from "../UI/Card";
@@ -66,6 +66,15 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
                                     <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-[9px] font-black uppercase tracking-widest text-red-400">
                                         Trip Cancelled
                                     </span>
+                                )}
+                                {trip.trip_status === 'ongoing' && (
+                                    <Link
+                                        href={`/live/${trip.trip_id}`}
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-[9px] font-black uppercase tracking-widest text-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.3)]"
+                                    >
+                                        <HiStatusOnline className="w-3 h-3" />
+                                        Live
+                                    </Link>
                                 )}
                             </div>
 
