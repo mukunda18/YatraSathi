@@ -5,6 +5,7 @@ import {
     cancelTripById,
     updateRideRequestStatus,
     removeRiderFromTrip,
+    updateTripStatus,
 } from "@/db/db";
 import { getUserId } from "./authActions";
 import { getAuthenticatedDriver } from "./authHelpers";
@@ -35,9 +36,25 @@ export async function cancelTripAction(tripId: string, reason?: string) {
     return { success: true, message: "Trip cancelled successfully" };
 }
 
-export async function updateRequestStatusAction(requestId: string, status: "rejected") {
-    if (!requestId || status !== "rejected") {
-        return { success: false, message: "Invalid request" };
+export async function updateTripStatusAction(tripId: string, status: 'scheduled' | 'ongoing' | 'completed') {
+    if (!tripId || !['scheduled', 'ongoing', 'completed'].includes(status)) {
+        return { success: false, message: "Invalid trip status update" };
+    }
+
+    const { driver, error } = await getAuthenticatedDriver();
+    if (error) return error;
+
+    const result = await updateTripStatus(tripId, status, driver!.id);
+    if (!result) {
+        return { success: false, message: `Failed to update trip to ${status}.` };
+    }
+
+    return { success: true, message: `Trip ${status} successfully` };
+}
+
+export async function updateRequestStatusAction(requestId: string, status: "onboard" | "dropedoff" | "rejected") {
+    if (!requestId || !["onboard", "dropedoff", "rejected"].includes(status)) {
+        return { success: false, message: "Invalid request status update" };
     }
 
     const { driver, error } = await getAuthenticatedDriver();
@@ -45,10 +62,10 @@ export async function updateRequestStatusAction(requestId: string, status: "reje
 
     const result = await updateRideRequestStatus(requestId, status, driver!.id);
     if (!result) {
-        return { success: false, message: `Failed to ${status} request.` };
+        return { success: false, message: `Failed to update request to ${status}.` };
     }
 
-    return { success: true, message: `Request ${status} successfully` };
+    return { success: true, message: `Rider is now ${status === 'onboard' ? 'Onboard' : status === 'dropedoff' ? 'Dropped Off' : 'Rejected'}` };
 }
 
 export async function removeRiderAction(requestId: string, reason?: string) {

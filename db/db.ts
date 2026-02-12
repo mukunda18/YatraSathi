@@ -1,5 +1,8 @@
 import { pool } from "./index";
 
+export type TripStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
+export type RideRequestStatus = 'waiting' | 'onboard' | 'dropedoff' | 'cancelled';
+
 export interface User {
     id: string;
     name: string;
@@ -41,7 +44,7 @@ export interface Trip {
     total_seats: number;
     available_seats: number;
     description: string | null;
-    status: string;
+    status: TripStatus;
     cancelled_at: Date | null;
     cancelled_reason: string | null;
     created_at: Date;
@@ -67,7 +70,7 @@ export interface RideRequest {
     drop_address: string;
     seats: number;
     total_fare: number;
-    status: string;
+    status: RideRequestStatus;
     created_at: Date;
     updated_at: Date;
 }
@@ -348,7 +351,7 @@ export const searchTrips = async (from_location: string, to_location: string): P
                 ))
                  FROM ride_requests rr
                  JOIN users ru ON rr.rider_id = ru.id
-                 WHERE rr.trip_id = t.id AND rr.status = 'waiting'
+                 WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard')
                 ), '[]'::json
             ) as riders
         FROM trips t
@@ -429,12 +432,12 @@ export const createRideRequest = async (data: {
 };
 
 
-
-
 export const getJoinedTripsByRiderId = async (rider_id: string): Promise<any[]> => {
     const sql = `
         SELECT 
-            rr.id as request_id, rr.status as request_status, rr.seats as requested_seats,
+            rr.id as request_id, 
+            rr.status as request_status, 
+            rr.seats as requested_seats,
             rr.pickup_address, rr.drop_address, rr.total_fare,
             t.id as trip_id, t.from_address, t.to_address, t.travel_date, t.status as trip_status,
             u.name as driver_name, u.avg_rating as driver_rating,
@@ -484,7 +487,7 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
                            ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng
                     FROM ride_requests rr
                     JOIN users ru ON rr.rider_id = ru.id
-                    WHERE rr.trip_id = t.id AND rr.status = 'waiting'
+                    WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard')
                 ) rd
             ) as riders,
             (
@@ -497,7 +500,7 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
                     'drop_address', my_rr.drop_address
                 )
                 FROM ride_requests my_rr 
-                WHERE my_rr.trip_id = t.id AND my_rr.rider_id = $2
+                WHERE my_rr.trip_id = t.id AND my_rr.rider_id = $2 AND my_rr.status NOT IN ('cancelled', 'dropedoff')
                 LIMIT 1
             ) as my_request
         FROM trips t
@@ -586,7 +589,7 @@ t.id as trip_id, t.from_address, t.to_address, t.travel_date,
                 'total_fare', rr.total_fare,
                 'status', rr.status
             )
-        ) FILTER(WHERE rr.id IS NOT NULL), '[]'
+        ) FILTER(WHERE rr.id IS NOT NULL AND rr.status IN ('waiting', 'onboard', 'dropedoff')), '[]'
     ) as ride_requests
         FROM trips t
         LEFT JOIN ride_requests rr ON t.id = rr.trip_id
@@ -626,7 +629,22 @@ export const cancelTripById = async (trip_id: string, reason?: string, driver_id
     }
 };
 
-export const updateRideRequestStatus = async (request_id: string, status: string, driver_id: string): Promise<boolean> => {
+export const updateTripStatus = async (tripId: string, status: 'scheduled' | 'ongoing' | 'completed', driverId: string): Promise<boolean> => {
+    const sql = `
+        UPDATE trips 
+        SET status = $2, updated_at = now() 
+        WHERE id = $1 AND driver_id = $3;
+    `;
+    try {
+        const res = await query(sql, [tripId, status, driverId]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error('Error updating trip status:', error);
+        return false;
+    }
+};
+
+export const updateRideRequestStatus = async (request_id: string, status: 'waiting' | 'onboard' | 'dropedoff' | 'rejected' | 'cancelled', driver_id: string): Promise<boolean> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -636,17 +654,21 @@ export const updateRideRequestStatus = async (request_id: string, status: string
             return false;
         }
 
-        const updateSql = `UPDATE ride_requests SET status = $2, updated_at = now() WHERE id = $1 RETURNING seats, trip_id; `;
-        const res = await client.query(updateSql, [request_id, status]);
-
-        if (res.rowCount === 0) {
+        const currentSql = `SELECT status, seats, trip_id FROM ride_requests WHERE id = $1 FOR UPDATE`;
+        const currentRes = await client.query(currentSql, [request_id]);
+        if (currentRes.rowCount === 0) {
             await client.query('ROLLBACK');
             return false;
         }
+        const { status: oldStatus, seats, trip_id: requestTripId } = currentRes.rows[0];
 
-        const { seats, trip_id: requestTripId } = res.rows[0];
+        const finalStatus = status === 'rejected' ? 'cancelled' : status;
 
-        if (status === 'rejected' || status === 'cancelled') {
+        const updateSql = `UPDATE ride_requests SET status = $2, updated_at = now() WHERE id = $1`;
+        await client.query(updateSql, [request_id, finalStatus]);
+
+        if ((oldStatus === 'waiting' && (status === 'rejected' || status === 'cancelled')) ||
+            (oldStatus === 'onboard' && status === 'dropedoff')) {
             await updateTripAvailableSeats(client, requestTripId, seats);
         }
 
