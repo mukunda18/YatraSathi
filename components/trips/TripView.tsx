@@ -4,8 +4,8 @@ import TripMap from "@/components/map/TripMap";
 import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
 import Link from "next/link";
-import { cancelTripAction, cancelRideRequestAction } from "@/app/actions/tripActions";
-import { updateTripStatusAction } from "@/app/actions/driverActions";
+import { cancelBookingAction } from "@/app/actions/tripActions";
+import { updateTripStatusAction, cancelTripAction } from "@/app/actions/driverActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
 import Card from "@/components/UI/Card";
@@ -70,7 +70,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
         setCancelling(true);
         try {
-            const result = await cancelRideRequestAction(currentTrip.my_request.id, cancelReason);
+            const result = await cancelBookingAction(currentTrip.my_request.id, cancelReason);
             if (result.success) {
                 toast.success(result.message);
             } else {

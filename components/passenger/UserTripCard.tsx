@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cancelRideRequestAction } from "@/app/actions/tripActions";
+import { cancelBookingAction } from "@/app/actions/tripActions";
 import { HiX, HiLocationMarker, HiClock, HiCurrencyRupee, HiUser, HiExclamation, HiStar, HiStatusOnline } from "react-icons/hi";
 import { toast } from "sonner";
 import Overlay from "../UI/Overlay";
@@ -32,7 +32,7 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
     const handleCancelBooking = async () => {
         setIsLoading(true);
         try {
-            const result = await cancelRideRequestAction(trip.request_id, cancelReason);
+            const result = await cancelBookingAction(trip.request_id, cancelReason);
             if (result.success) {
                 toast.success(result.message);
                 setShowCancelModal(false);
