@@ -29,15 +29,7 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
         });
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "waiting": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-            case "accepted": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-            case "completed": return "text-blue-400 bg-blue-500/10 border-blue-500/20";
-            case "cancelled": return "text-red-400 bg-red-500/10 border-red-500/20";
-            default: return "text-slate-400 bg-slate-500/10 border-slate-500/20";
-        }
-    };
+
 
     const handleCancelBooking = async () => {
         setIsLoading(true);
@@ -65,8 +57,10 @@ export default function UserTripCard({ trip, onUpdate }: UserTripCardProps) {
                     <div className="flex items-start justify-between mb-4">
                         <Link href={`/trips/${trip.trip_id}`} prefetch={true} className="flex-1 group/link min-w-0">
                             <div className="flex items-center gap-3 mb-2">
-                                <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-widest ${getStatusColor(trip.request_status)}`}>
-                                    {trip.request_status === 'waiting' ? 'Joined' : trip.request_status}
+                                <span className={`status-badge status-${trip.request_status}`}>
+                                    {trip.request_status === 'waiting' ? 'Joined' :
+                                        trip.request_status === 'onboard' ? 'Onboard' :
+                                            trip.request_status === 'dropedoff' ? 'Dropped Off' : trip.request_status}
                                 </span>
                                 {trip.trip_status === 'cancelled' && (
                                     <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-[9px] font-black uppercase tracking-widest text-red-400">

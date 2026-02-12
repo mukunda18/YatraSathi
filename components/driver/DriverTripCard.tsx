@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { cancelTripAction, updateRequestStatusAction, removeRiderAction } from "@/app/actions/driverActions";
-import { HiX, HiCheck, HiTrash, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
+import { cancelTripAction, updateRequestStatusAction, removeRiderAction, updateTripStatusAction } from "@/app/actions/driverActions";
+import { HiX, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
 import { toast } from "sonner";
 import Overlay from "../UI/Overlay";
 import Card from "../UI/Card";
@@ -33,24 +33,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         });
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "scheduled": return "text-indigo-400 bg-indigo-500/10 border-indigo-500/20";
-            case "in_progress": return "text-amber-400 bg-amber-500/10 border-amber-500/20";
-            case "completed": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-            case "cancelled": return "text-red-400 bg-red-500/10 border-red-500/20";
-            default: return "text-slate-400 bg-slate-500/10 border-slate-500/20";
-        }
-    };
 
-    const getRequestStatusColor = (status: string) => {
-        switch (status) {
-            case "waiting": return "text-amber-400";
-            case "accepted": return "text-emerald-400";
-            case "rejected": return "text-red-400";
-            default: return "text-slate-400";
-        }
-    };
 
     const handleCancelTrip = async () => {
         setIsLoading(true);
@@ -102,7 +85,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         }
     };
 
-    const waitingRequests = trip.ride_requests.filter((r: any) => r.status === "waiting" || r.status === "accepted");
+    const waitingRequests = trip.ride_requests.filter((r: any) => r.status === "waiting" || r.status === "onboard");
 
     return (
         <>
@@ -111,8 +94,8 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                     <div className="flex items-start justify-between mb-4">
                         <Link href={`/trips/${trip.trip_id}`} className="flex-1 group/link">
                             <div className="flex items-center gap-3 mb-2">
-                                <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-widest ${getStatusColor(trip.trip_status)}`}>
-                                    {trip.trip_status}
+                                <span className={`status-badge status-${trip.trip_status}`}>
+                                    {trip.trip_status === 'ongoing' ? 'Ongoing' : trip.trip_status}
                                 </span>
                                 {waitingRequests.length > 0 && (
                                     <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest text-emerald-400">
@@ -143,15 +126,33 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                             </div>
                         </Link>
 
-                        {trip.trip_status === "scheduled" && (
-                            <button
-                                onClick={() => setShowCancelModal(true)}
-                                className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                                title="Cancel Trip"
-                            >
-                                <HiX className="w-4 h-4" />
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {trip.trip_status === 'scheduled' && (
+                                <button
+                                    onClick={() => updateTripStatusAction(trip.trip_id, 'ongoing')}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                                >
+                                    Start Trip
+                                </button>
+                            )}
+                            {trip.trip_status === 'ongoing' && (
+                                <button
+                                    onClick={() => updateTripStatusAction(trip.trip_id, 'completed')}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                                >
+                                    Complete Trip
+                                </button>
+                            )}
+                            {trip.trip_status === 'scheduled' && (
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                                    title="Cancel Trip"
+                                >
+                                    <HiX className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <button
@@ -169,12 +170,12 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                             <div key={request.request_id} className="p-4 bg-slate-950/30">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-sm font-bold text-white">{request.rider_name}</span>
-                                            <span className={`text-[9px] font-bold uppercase ${request.status === 'waiting' ? 'text-emerald-400' : getRequestStatusColor(request.status)}`}>
-                                                {request.status === 'waiting' ? 'Joined' : request.status}
-                                            </span>
-                                        </div>
+                                        <span className="text-sm font-bold text-white">{request.rider_name}</span>
+                                        <span className={`status-badge status-${request.status}`}>
+                                            {request.status === 'waiting' ? 'Joined' :
+                                                request.status === 'onboard' ? 'Onboard' :
+                                                    request.status === 'dropedoff' ? 'Dropped Off' : request.status}
+                                        </span>
                                         <p className="text-[10px] text-slate-500 truncate">
                                             {request.pickup_address.split(",")[0]} → {request.drop_address.split(",")[0]}
                                         </p>
@@ -194,15 +195,33 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                             </a>
                                         )}
 
-                                        {(request.status === "waiting" || request.status === "accepted") && trip.trip_status === "scheduled" && (
-                                            <button
-                                                onClick={() => handleRejectRequest(request.request_id)}
-                                                className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                                                title="Remove Rider"
-                                            >
-                                                <HiX className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {request.status === "waiting" && trip.trip_status === "ongoing" && (
+                                                <button
+                                                    onClick={() => updateRequestStatusAction(request.request_id, 'onboard')}
+                                                    className="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+                                                >
+                                                    Onboard
+                                                </button>
+                                            )}
+                                            {request.status === "onboard" && (
+                                                <button
+                                                    onClick={() => updateRequestStatusAction(request.request_id, 'dropedoff')}
+                                                    className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+                                                >
+                                                    Drop Off
+                                                </button>
+                                            )}
+                                            {request.status === "waiting" && trip.trip_status === "scheduled" && (
+                                                <button
+                                                    onClick={() => handleRejectRequest(request.request_id)}
+                                                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                                                    title="Remove Rider"
+                                                >
+                                                    <HiX className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
 
 
                                     </div>

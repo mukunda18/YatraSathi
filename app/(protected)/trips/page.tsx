@@ -1,5 +1,4 @@
 import { validateSession } from "@/app/actions/authActions";
-import { getJoinedTripsAction } from "@/app/actions/tripActions";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import UserTripsList from "@/components/passenger/UserTripsList";
@@ -17,29 +16,6 @@ export default async function MyTripsPage() {
     if (!user) {
         redirect("/login");
     }
-
-    const result = await getJoinedTripsAction();
-    const trips = result.trips || [];
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "waiting": return "text-amber-400 bg-amber-500/10 border-amber-500/20";
-            case "accepted": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-            case "completed": return "text-blue-400 bg-blue-500/10 border-blue-500/20";
-            case "cancelled": return "text-red-400 bg-red-500/10 border-red-500/20";
-            default: return "text-slate-400 bg-slate-500/10 border-slate-500/20";
-        }
-    };
-
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        });
-    };
 
     return (
         <main className="min-h-screen bg-slate-950 relative overflow-hidden">

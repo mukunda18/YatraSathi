@@ -33,16 +33,6 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
         });
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "waiting": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-            case "accepted": return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-            case "completed": return "text-blue-400 bg-blue-500/10 border-blue-500/20";
-            case "cancelled": return "text-red-400 bg-red-500/10 border-red-500/20";
-            case "scheduled": return "text-indigo-400 bg-indigo-500/10 border-indigo-500/20";
-            default: return "text-slate-400 bg-slate-500/10 border-slate-500/20";
-        }
-    };
 
     const handleCancelTrip = () => {
         setCancelMode("trip");
@@ -105,7 +95,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                     {/* Header */}
                     <div>
                         <div className="flex items-center justify-between mb-4">
-                            <span className={`px-3 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${getStatusColor(currentTrip.trip_status)}`}>
+                            <span className={`status-badge status-${currentTrip.trip_status}`}>
                                 {currentTrip.trip_status}
                             </span>
                             <div className="flex items-center gap-1.5 text-slate-500">
@@ -267,8 +257,10 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-bold text-slate-500">Status</span>
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${getStatusColor(currentTrip.my_request.status)}`}>
-                                        {currentTrip.my_request.status === 'waiting' ? 'Joined' : currentTrip.my_request.status}
+                                    <span className={`status-badge status-${currentTrip.my_request.status}`}>
+                                        {currentTrip.my_request.status === 'waiting' ? 'Joined' :
+                                            currentTrip.my_request.status === 'onboard' ? 'Onboard' :
+                                                currentTrip.my_request.status === 'dropedoff' ? 'Dropped Off' : currentTrip.my_request.status}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
