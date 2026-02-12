@@ -33,8 +33,6 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         });
     };
 
-
-
     const handleCancelTrip = async () => {
         setIsLoading(true);
         try {
@@ -43,6 +41,23 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                 toast.success(result.message);
                 setShowCancelModal(false);
                 onUpdate();
+            } else {
+                toast.error(result.message);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleUpdateTripStatus = async (status: 'ongoing' | 'completed') => {
+        setIsLoading(true);
+        try {
+            const result = await updateTripStatusAction(trip.trip_id, status);
+            if (result.success) {
+                toast.success(result.message);
+                onUpdate();
+                if (status === 'ongoing') {
+                }
             } else {
                 toast.error(result.message);
             }
@@ -129,19 +144,27 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                         <div className="flex items-center gap-2">
                             {trip.trip_status === 'scheduled' && (
                                 <button
-                                    onClick={() => updateTripStatusAction(trip.trip_id, 'ongoing')}
+                                    onClick={() => handleUpdateTripStatus('ongoing')}
                                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
                                 >
                                     Start Trip
                                 </button>
                             )}
                             {trip.trip_status === 'ongoing' && (
-                                <button
-                                    onClick={() => updateTripStatusAction(trip.trip_id, 'completed')}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
-                                >
-                                    Complete Trip
-                                </button>
+                                <>
+                                    <Link
+                                        href={`/live/${trip.trip_id}`}
+                                        className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all animate-pulse"
+                                    >
+                                        Live
+                                    </Link>
+                                    <button
+                                        onClick={() => handleUpdateTripStatus('completed')}
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Complete Trip
+                                    </button>
+                                </>
                             )}
                             {trip.trip_status === 'scheduled' && (
                                 <button

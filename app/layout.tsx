@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from "sonner";
+import LocationWatcher from "@/components/location/LocationWatcher";
 
 export default function RootLayout({
   children,
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en" className="h-full bg-black text-white selection:bg-white/10">
       <body className={`antialiased h-full overflow-x-hidden`}>
         <Toaster position="top-center" richColors theme="dark" />
+        <LocationWatcher />
         {children}
       </body>
     </html>

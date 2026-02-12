@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { HiSearch, HiLocationMarker } from "react-icons/hi";
 import { toast } from "sonner";
 import { TripLocation, SearchFormContext, CreationFormContext } from "@/store/types";
+import { useLocationStore } from "@/store/locationStore";
 
 interface LocationFieldProps {
     mode: "search" | "plan";
@@ -38,6 +39,7 @@ export default function LocationField({
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
+    const { latitude, longitude, error: locationError } = useLocationStore();
 
     const storeDraft = type === "from" ? fromAddress : type === "to" ? toAddress : stops.find(s => s.id === type)?.address || "";
     const [inputValue, setInputValue] = useState(storeDraft);
@@ -121,77 +123,69 @@ export default function LocationField({
         setActiveField(null);
     };
 
-    const handleUseCurrentLocation = () => {
+    const handleUseCurrentLocation = async () => {
         if (!window.isSecureContext) {
             toast.error("Location requires a secure connection (HTTPS or localhost). Check your URL.");
             return;
         }
 
-        if ("geolocation" in navigator) {
+        if (latitude && longitude) {
             setIsLocating(true);
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
-                    setCurrentPosition(loc);
+            const loc = { lat: latitude, lng: longitude };
+            setCurrentPosition(loc);
 
-                    const tempLoc = { ...loc, address: "Locating..." };
-                    if (type === "from") setFrom(tempLoc);
-                    else if (type === "to") setTo(tempLoc);
-                    else updateStop(type, tempLoc);
-                    setInputValue("Locating...");
+            const tempLoc = { ...loc, address: "Locating..." };
+            if (type === "from") setFrom(tempLoc);
+            else if (type === "to") setTo(tempLoc);
+            else updateStop(type, tempLoc);
+            setInputValue("Locating...");
 
-                    setShowDropdown(false);
-                    setActiveField(null);
-                    setIsLocating(false);
+            setShowDropdown(false);
+            setActiveField(null);
 
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.lat}&lon=${loc.lng}`);
-                        const data = await res.json();
-                        const address = data.display_name || "Current Location";
-                        const tripLoc = { ...loc, address };
-                        if (type === "from") {
-                            setFrom(tripLoc);
-                            setFromAddress(address);
-                        } else if (type === "to") {
-                            setTo(tripLoc);
-                            setToAddress(address);
-                        } else {
-                            updateStop(type, tripLoc);
-                        }
-                        setInputValue(address);
-                    } catch (error) {
-                        const address = `Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`;
-                        const tripLoc = { ...loc, address };
-                        if (type === "from") {
-                            setFrom(tripLoc);
-                            setFromAddress(address);
-                        } else if (type === "to") {
-                            setTo(tripLoc);
-                            setToAddress(address);
-                        } else {
-                            updateStop(type, tripLoc);
-                        }
-                        setInputValue(address);
-                    }
-                },
-                (error) => {
-                    setIsLocating(false);
-                    console.error("Geo error:", error);
-                },
-                { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-            );
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.lat}&lon=${loc.lng}`);
+                const data = await res.json();
+                const address = data.display_name || "Current Location";
+                const tripLoc = { ...loc, address };
+                if (type === "from") {
+                    setFrom(tripLoc);
+                    setFromAddress(address);
+                } else if (type === "to") {
+                    setTo(tripLoc);
+                    setToAddress(address);
+                } else {
+                    updateStop(type, tripLoc);
+                }
+                setInputValue(address);
+            } catch (error) {
+                const address = `Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`;
+                const tripLoc = { ...loc, address };
+                if (type === "from") {
+                    setFrom(tripLoc);
+                    setFromAddress(address);
+                } else if (type === "to") {
+                    setTo(tripLoc);
+                    setToAddress(address);
+                } else {
+                    updateStop(type, tripLoc);
+                }
+                setInputValue(address);
+            } finally {
+                setIsLocating(false);
+            }
+        } else if (locationError) {
+            toast.error(locationError);
+        } else {
+            toast.error("Waiting for location hardware...");
         }
     };
 
     const handleFocus = () => {
         setShowDropdown(true);
         setActiveField(type as any);
-        if (!currentPosition && "geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => setCurrentPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                null,
-                { timeout: 5000 }
-            );
+        if (!currentPosition && latitude && longitude) {
+            setCurrentPosition({ lat: latitude, lng: longitude });
         }
     };
 

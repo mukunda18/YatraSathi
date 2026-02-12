@@ -6,6 +6,10 @@ import {
     updateRideRequestStatus,
     removeRiderFromTrip,
     updateTripStatus,
+    getTripViewById,
+    hasOngoingTrip,
+    TripStatus,
+    RideRequestStatus,
 } from "@/db/db";
 import { getUserId } from "./authActions";
 import { getAuthenticatedDriver } from "./authHelpers";
@@ -36,15 +40,32 @@ export async function cancelTripAction(tripId: string, reason?: string) {
     return { success: true, message: "Trip cancelled successfully" };
 }
 
-export async function updateTripStatusAction(tripId: string, status: 'scheduled' | 'ongoing' | 'completed') {
-    if (!tripId || !['scheduled', 'ongoing', 'completed'].includes(status)) {
-        return { success: false, message: "Invalid trip status update" };
+export async function updateTripStatusAction(tripId: string, status: TripStatus) {
+    if (!tripId) {
+        return { success: false, message: "Trip ID is required" };
     }
 
     const { driver, error } = await getAuthenticatedDriver();
     if (error) return error;
 
-    const result = await updateTripStatus(tripId, status, driver!.id);
+    if (status === 'ongoing') {
+        const ongoingExists = await hasOngoingTrip(driver!.id);
+        if (ongoingExists) {
+            return { success: false, message: "You already have an ongoing trip. Please complete it before starting a new one." };
+        }
+
+        const trip = await getTripViewById(tripId);
+        if (!trip) {
+            return { success: false, message: "Trip not found" };
+        }
+        const travelDate = new Date(trip.travel_date);
+        const now = new Date();
+        if (travelDate > now) {
+            return { success: false, message: "You cannot start the trip before the scheduled time." };
+        }
+    }
+
+    const result = await updateTripStatus(tripId, status as any, driver!.id);
     if (!result) {
         return { success: false, message: `Failed to update trip to ${status}.` };
     }
@@ -52,20 +73,20 @@ export async function updateTripStatusAction(tripId: string, status: 'scheduled'
     return { success: true, message: `Trip ${status} successfully` };
 }
 
-export async function updateRequestStatusAction(requestId: string, status: "onboard" | "dropedoff" | "rejected") {
-    if (!requestId || !["onboard", "dropedoff", "rejected"].includes(status)) {
-        return { success: false, message: "Invalid request status update" };
+export async function updateRequestStatusAction(requestId: string, status: RideRequestStatus) {
+    if (!requestId) {
+        return { success: false, message: "Request ID is required" };
     }
 
     const { driver, error } = await getAuthenticatedDriver();
     if (error) return error;
 
-    const result = await updateRideRequestStatus(requestId, status, driver!.id);
+    const result = await updateRideRequestStatus(requestId, status as any, driver!.id);
     if (!result) {
         return { success: false, message: `Failed to update request to ${status}.` };
     }
 
-    return { success: true, message: `Rider is now ${status === 'onboard' ? 'Onboard' : status === 'dropedoff' ? 'Dropped Off' : 'Rejected'}` };
+    return { success: true, message: `Rider is now ${status === 'onboard' ? 'Onboard' : status === 'dropedoff' ? 'Dropped Off' : status}` };
 }
 
 export async function removeRiderAction(requestId: string, reason?: string) {
