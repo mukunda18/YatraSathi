@@ -24,7 +24,7 @@ export default function UserRidesList() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "waiting": return "bg-amber-500";
+            case "waiting": return "bg-emerald-500";
             case "accepted": return "bg-emerald-500";
             case "completed": return "bg-blue-500";
             case "cancelled": return "bg-red-500";
@@ -74,7 +74,7 @@ export default function UserRidesList() {
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                     <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor(trip.request_status)}`} />
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{trip.request_status}</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{trip.request_status === 'waiting' ? 'Joined' : trip.request_status}</span>
                                 </div>
                                 <HiArrowRight className="w-3 h-3 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
                             </div>

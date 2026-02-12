@@ -197,9 +197,6 @@ export default function LocationField({
 
     const handleInputChange = (val: string) => {
         setInputValue(val);
-
-        // When typing manually, nullify the verified location object
-        // so the "Unverified" badge appears and stays until a suggestion is picked or map used.
         if (type === "from") {
             setFrom(null);
             setFromAddress(val);
