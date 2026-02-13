@@ -70,6 +70,11 @@ export interface TripViewData {
     vehicle_type: string;
     vehicle_number: string;
     vehicle_info: any;
+    driver_current_lat?: number | null;
+    driver_current_lng?: number | null;
+    driver_heading?: number | null;
+    driver_speed_kmph?: number | null;
+    driver_last_updated?: string | null;
     route_geometry: [number, number][] | null;
     stops: {
         id: string;
@@ -87,6 +92,17 @@ export interface TripViewData {
         drop_address: string;
     } | null;
     riders?: TripRider[];
+}
+
+export interface LiveDriverRider extends TripRider {
+    current_lat?: number | null;
+    current_lng?: number | null;
+    live_status?: string | null;
+    live_last_updated?: string | null;
+}
+
+export interface LiveDriverTripData extends Omit<TripViewData, "riders"> {
+    riders?: LiveDriverRider[];
 }
 
 export interface SearchFormContext {

@@ -547,6 +547,140 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
     }
 };
 
+export const getLiveTripViewById = async (trip_id: string, rider_id?: string): Promise<any | null> => {
+    const sql = `
+        SELECT 
+            t.id as trip_id, t.from_address, t.to_address, t.travel_date, 
+            t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
+            ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
+            ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
+            u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, d.avg_rating as driver_rating,
+            d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
+            ST_Y(lt.current_location::geometry) as driver_current_lat,
+            ST_X(lt.current_location::geometry) as driver_current_lng,
+            lt.heading as driver_heading,
+            lt.speed_kmph as driver_speed_kmph,
+            lt.last_updated as driver_last_updated,
+            ST_AsGeoJSON(r.geom) as route_geojson,
+            (
+                SELECT COALESCE(json_agg(ts), '[]')
+                FROM (
+                    SELECT id, stop_address, stop_order,
+                           ST_Y(stop_location::geometry) as lat, ST_X(stop_location::geometry) as lng
+                    FROM trip_stops 
+                    WHERE trip_id = t.id 
+                    ORDER BY stop_order
+                ) ts
+            ) as stops,
+            (
+                SELECT COALESCE(json_agg(rd), '[]')
+                FROM (
+                    SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
+                           rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
+                           ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
+                           ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng
+                    FROM ride_requests rr
+                    JOIN users ru ON rr.rider_id = ru.id
+                    WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard', 'dropedoff')
+                ) rd
+            ) as riders,
+            (
+                SELECT json_build_object(
+                    'id', my_rr.id,
+                    'status', my_rr.status,
+                    'seats', my_rr.seats,
+                    'total_fare', my_rr.total_fare,
+                    'pickup_address', my_rr.pickup_address,
+                    'drop_address', my_rr.drop_address
+                )
+                FROM ride_requests my_rr 
+                WHERE my_rr.trip_id = t.id AND my_rr.rider_id = $2 AND my_rr.status NOT IN ('cancelled')
+                LIMIT 1
+            ) as my_request
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        JOIN users u ON d.user_id = u.id
+        LEFT JOIN routes r ON t.route_id = r.id
+        LEFT JOIN live_trips lt ON lt.trip_id = t.id
+        WHERE t.id = $1;
+    `;
+    try {
+        const res = await query(sql, [trip_id, rider_id || null]);
+        if (res.rows.length === 0) return null;
+
+        const trip = res.rows[0];
+
+        if (trip.my_request && !trip.my_request.id) {
+            trip.my_request = null;
+        }
+
+        return trip;
+    } catch (error) {
+        console.error('Error getting live trip view:', error);
+        return null;
+    }
+};
+
+export const getCurrentDriverLiveTripByDriverId = async (driver_id: string): Promise<any | null> => {
+    const sql = `
+        SELECT 
+            t.id as trip_id, t.from_address, t.to_address, t.travel_date, 
+            t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
+            ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
+            ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
+            u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, d.avg_rating as driver_rating,
+            d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
+            ST_Y(lt.current_location::geometry) as driver_current_lat,
+            ST_X(lt.current_location::geometry) as driver_current_lng,
+            lt.heading as driver_heading,
+            lt.speed_kmph as driver_speed_kmph,
+            lt.last_updated as driver_last_updated,
+            ST_AsGeoJSON(r.geom) as route_geojson,
+            (
+                SELECT COALESCE(json_agg(ts), '[]')
+                FROM (
+                    SELECT id, stop_address, stop_order,
+                           ST_Y(stop_location::geometry) as lat, ST_X(stop_location::geometry) as lng
+                    FROM trip_stops 
+                    WHERE trip_id = t.id 
+                    ORDER BY stop_order
+                ) ts
+            ) as stops,
+            (
+                SELECT COALESCE(json_agg(rd), '[]')
+                FROM (
+                    SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
+                           rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
+                           ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
+                           ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng,
+                           COALESCE(ST_Y(lu.current_location::geometry), ST_Y(rr.pickup_location::geometry)) as current_lat,
+                           COALESCE(ST_X(lu.current_location::geometry), ST_X(rr.pickup_location::geometry)) as current_lng,
+                           lu.status as live_status, lu.last_updated as live_last_updated
+                    FROM ride_requests rr
+                    JOIN users ru ON rr.rider_id = ru.id
+                    LEFT JOIN live_users lu ON lu.user_id = rr.rider_id
+                    WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard', 'dropedoff')
+                ) rd
+            ) as riders
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        JOIN users u ON d.user_id = u.id
+        LEFT JOIN routes r ON t.route_id = r.id
+        LEFT JOIN live_trips lt ON lt.trip_id = t.id
+        WHERE t.driver_id = $1 AND t.status = 'ongoing'
+        ORDER BY t.updated_at DESC
+        LIMIT 1;
+    `;
+    try {
+        const res = await query(sql, [driver_id]);
+        if (res.rows.length === 0) return null;
+        return res.rows[0];
+    } catch (error) {
+        console.error('Error getting current driver live trip:', error);
+        return null;
+    }
+};
+
 export const getDriverByUserId = async (user_id: string): Promise<Driver | undefined> => {
     const sql = `SELECT * FROM drivers WHERE user_id = $1;`;
     try {
@@ -640,113 +774,169 @@ export const cancelTripById = async (trip_id: string, reason?: string, driver_id
     }
 };
 
-export const updateTripStatus = async (
-    tripId: string,
-    status: 'scheduled' | 'ongoing' | 'completed',
-    driverId: string
-): Promise<{ success: boolean; message?: string }> => {
-    const sql = `
-        WITH driver_check AS (
-            SELECT 
-                EXISTS (SELECT 1 FROM trips WHERE driver_id = $3 AND status = 'ongoing' AND id != $1) as has_ongoing,
-                (SELECT travel_date FROM trips WHERE id = $1) as travel_date
-        )
-        UPDATE trips 
-        SET status = $2, updated_at = now() 
-        WHERE id = $1 
-          AND driver_id = $3
-          AND (
-            $2 != 'ongoing' OR (
-                NOT (SELECT has_ongoing FROM driver_check)
-                AND (SELECT travel_date FROM driver_check) <= now()
-            )
-          )
-        RETURNING 
-            (SELECT has_ongoing FROM driver_check) as blocked_by_ongoing,
-            ((SELECT travel_date FROM driver_check) > now()) as is_too_early;
-    `;
+export const startTripByDriver = async (tripId: string, driverId: string): Promise<{ success: boolean; message?: string }> => {
+    const client = await pool.connect();
     try {
-        const res = await query(sql, [tripId, status, driverId]);
+        await client.query('BEGIN');
 
-        if ((res.rowCount ?? 0) > 0) {
-            return { success: true };
-        }
-
-        const checkSql = `
-            SELECT 
-                status,
-                travel_date,
-                EXISTS (SELECT 1 FROM trips WHERE driver_id = $2 AND status = 'ongoing') as has_ongoing
-            FROM trips 
+        const tripCheckSql = `
+            SELECT id, driver_id, travel_date, status, ST_AsText(from_location) as from_location_wkt
+            FROM trips
             WHERE id = $1 AND driver_id = $2
+            FOR UPDATE
         `;
-        const checkRes = await query(checkSql, [tripId, driverId]);
+        const tripRes = await client.query(tripCheckSql, [tripId, driverId]);
 
-        if (checkRes.rowCount === 0) {
+        if (tripRes.rowCount === 0) {
+            await client.query('ROLLBACK');
             return { success: false, message: "Trip not found or unauthorized." };
         }
+        const trip = tripRes.rows[0];
 
-        const info = checkRes.rows[0];
-        if (status === 'ongoing') {
-            if (info.has_ongoing) return { success: false, message: "You already have an ongoing trip." };
-            if (new Date(info.travel_date) > new Date()) return { success: false, message: "Too early to start the trip." };
+        if (trip.status !== 'scheduled') {
+            await client.query('ROLLBACK');
+            return { success: false, message: "Only scheduled trips can be started." };
         }
 
-        return { success: false, message: "Failed to update trip status." };
+        if (new Date(trip.travel_date) > new Date()) {
+            await client.query('ROLLBACK');
+            return { success: false, message: "Too early to start the trip." };
+        }
+
+        const ongoingCheckSql = `
+            SELECT id FROM trips
+            WHERE driver_id = $1 AND status = 'ongoing' AND id != $2
+            LIMIT 1
+        `;
+        const ongoingRes = await client.query(ongoingCheckSql, [driverId, tripId]);
+        if ((ongoingRes.rowCount ?? 0) > 0) {
+            await client.query('ROLLBACK');
+            return { success: false, message: "You already have an ongoing trip." };
+        }
+
+        await client.query(
+            `UPDATE trips SET status = 'ongoing', updated_at = now() WHERE id = $1 AND driver_id = $2`,
+            [tripId, driverId]
+        );
+
+        await client.query(`DELETE FROM live_trips WHERE driver_id = $1`, [driverId]);
+
+        await client.query(
+            `INSERT INTO live_trips (trip_id, driver_id, current_location, heading, speed_kmph, last_updated)
+             VALUES ($1, $2, ST_GeogFromText($3), NULL, NULL, now())`,
+            [tripId, driverId, trip.from_location_wkt]
+        );
+
+        await client.query(
+            `INSERT INTO live_users (user_id, current_location, status, last_updated)
+             SELECT rr.rider_id, rr.pickup_location, 'trip_waiting', now()
+             FROM ride_requests rr
+             WHERE rr.trip_id = $1
+               AND rr.status IN ('waiting', 'onboard')
+             ON CONFLICT (user_id)
+             DO UPDATE SET
+                current_location = EXCLUDED.current_location,
+                status = EXCLUDED.status,
+                last_updated = EXCLUDED.last_updated`,
+            [tripId]
+        );
+
+        await client.query('COMMIT');
+        return { success: true };
     } catch (error) {
-        console.error('Error updating trip status:', error);
+        await client.query('ROLLBACK');
+        console.error('Error starting trip:', error);
         return { success: false, message: "Database error occurred." };
+    } finally {
+        client.release();
     }
 };
 
-export const hasOngoingTrip = async (driverId: string): Promise<boolean> => {
+export const completeTripByDriver = async (tripId: string, driverId: string): Promise<{ success: boolean; message?: string }> => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const updateRes = await client.query(
+            `UPDATE trips
+             SET status = 'completed', updated_at = now()
+             WHERE id = $1 AND driver_id = $2 AND status = 'ongoing'`,
+            [tripId, driverId]
+        );
+
+        if ((updateRes.rowCount ?? 0) === 0) {
+            await client.query('ROLLBACK');
+            return { success: false, message: "Trip is not ongoing or not owned by driver." };
+        }
+
+        await client.query(`DELETE FROM live_trips WHERE trip_id = $1`, [tripId]);
+
+        await client.query('COMMIT');
+        return { success: true };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error completing trip:', error);
+        return { success: false, message: "Database error occurred." };
+    } finally {
+        client.release();
+    }
+};
+
+export const markRiderOnboardByDriver = async (request_id: string, driver_id: string): Promise<boolean> => {
     const sql = `
-        SELECT id FROM trips 
-        WHERE driver_id = $1 AND status = 'ongoing'
-        LIMIT 1;
+        UPDATE ride_requests rr
+        SET status = 'onboard', updated_at = now()
+        FROM trips t
+        WHERE rr.id = $1
+          AND rr.trip_id = t.id
+          AND t.driver_id = $2
+          AND t.status = 'ongoing'
+          AND rr.status = 'waiting'
     `;
     try {
-        const res = await query(sql, [driverId]);
+        const res = await query(sql, [request_id, driver_id]);
         return (res.rowCount ?? 0) > 0;
     } catch (error) {
-        console.error('Error checking ongoing trip:', error);
+        console.error('Error marking rider onboard:', error);
         return false;
     }
 };
 
-export const updateRideRequestStatus = async (request_id: string, status: 'waiting' | 'onboard' | 'dropedoff' | 'cancelled', driver_id: string): Promise<boolean> => {
+export const markRiderDroppedOffByDriver = async (request_id: string, driver_id: string): Promise<boolean> => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const currentSql = `
-            SELECT rr.status, rr.seats, rr.trip_id 
+            SELECT rr.status, rr.seats, rr.trip_id
             FROM ride_requests rr
             JOIN trips t ON rr.trip_id = t.id
-            WHERE rr.id = $1 AND t.driver_id = $2
+            WHERE rr.id = $1 AND t.driver_id = $2 AND t.status = 'ongoing'
             FOR UPDATE OF rr
         `;
         const currentRes = await client.query(currentSql, [request_id, driver_id]);
-
         if (currentRes.rowCount === 0) {
             await client.query('ROLLBACK');
             return false;
         }
+
         const { status: oldStatus, seats, trip_id: requestTripId } = currentRes.rows[0];
-
-        const updateSql = `UPDATE ride_requests SET status = $2, updated_at = now() WHERE id = $1`;
-        await client.query(updateSql, [request_id, status]);
-
-        if ((oldStatus === 'waiting' && status === 'cancelled') ||
-            (oldStatus === 'onboard' && status === 'dropedoff')) {
-            await updateTripAvailableSeats(client, requestTripId, seats);
+        if (oldStatus !== 'onboard') {
+            await client.query('ROLLBACK');
+            return false;
         }
+
+        await client.query(
+            `UPDATE ride_requests SET status = 'dropedoff', updated_at = now() WHERE id = $1`,
+            [request_id]
+        );
+        await updateTripAvailableSeats(client, requestTripId, seats);
 
         await client.query('COMMIT');
         return true;
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Error updating ride request status:', error);
+        console.error('Error marking rider dropped off:', error);
         return false;
     } finally {
         client.release();

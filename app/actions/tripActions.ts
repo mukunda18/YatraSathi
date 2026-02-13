@@ -1,6 +1,6 @@
 "use server";
 
-import { createTrip, createRideRequest, getJoinedTripsByRiderId, getTripViewById, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
+import { createTrip, createRideRequest, getJoinedTripsByRiderId, getLiveTripViewById, getTripViewById, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
 import { TripViewData } from "@/store/types";
 import { validateTrip } from "@/utils/validation";
 import { getAuthenticatedUserId, getAuthenticatedDriver } from "./authHelpers";
@@ -113,20 +113,7 @@ export async function getTripViewAction(tripId: string) {
         return { success: false, message: "Trip not found", trip: null };
     }
 
-    // Parse route_geojson into route_geometry standard
-    let route_geometry: [number, number][] | null = null;
-    if (trip.route_geojson) {
-        try {
-            const geojson = JSON.parse(trip.route_geojson);
-            if (geojson.type === 'LineString') {
-                route_geometry = geojson.coordinates;
-            }
-        } catch (e) {
-            console.error("Error parsing GeoJSON in getTripViewAction", e);
-        }
-    }
-
-    const { route_geojson, ...rest } = trip;
+    const { route_geometry, rest } = parseTripRouteGeometry(trip, "getTripViewAction");
 
     return {
         success: true,
@@ -135,6 +122,46 @@ export async function getTripViewAction(tripId: string) {
             route_geometry
         } as TripViewData
     };
+}
+
+export async function getLiveTripViewAction(tripId: string) {
+    const { userId } = await getAuthenticatedUserId();
+
+    const trip = await getLiveTripViewById(tripId, userId || undefined);
+
+    if (!trip) {
+        return { success: false, message: "Trip not found", trip: null };
+    }
+
+    const { route_geometry, rest } = parseTripRouteGeometry(trip, "getLiveTripViewAction");
+
+    return {
+        success: true,
+        trip: {
+            ...rest,
+            route_geometry
+        } as TripViewData
+    };
+}
+
+function parseTripRouteGeometry(
+    trip: Record<string, unknown>,
+    source: string
+): { route_geometry: [number, number][] | null; rest: Record<string, unknown> } {
+    let route_geometry: [number, number][] | null = null;
+    if (typeof trip.route_geojson === "string") {
+        try {
+            const geojson = JSON.parse(trip.route_geojson);
+            if (geojson.type === "LineString" && Array.isArray(geojson.coordinates)) {
+                route_geometry = geojson.coordinates;
+            }
+        } catch (e) {
+            console.error(`Error parsing GeoJSON in ${source}`, e);
+        }
+    }
+
+    const { route_geojson, ...rest } = trip;
+    return { route_geometry, rest };
 }
 
 

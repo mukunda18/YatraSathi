@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Map, { NavigationControl } from "react-map-gl/maplibre";
+import { useMemo, useState } from "react";
+import Map, { NavigationControl, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import { useRouter } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { parseWKT } from "@/utils/geo";
-import { TripLocation, StopLocation, TripSearchResult } from "@/store/types";
+import { TripLocation, StopLocation, TripRider, TripSearchResult } from "@/store/types";
 import { HiArrowLeft } from "react-icons/hi";
 
 import RouteLayer from "./ui/RouteLayer";
@@ -14,17 +14,53 @@ import RiderMarker from "./ui/RiderMarker";
 import IndicatorMarker from "./ui/IndicatorMarker";
 import { useLocationStore } from "@/store/locationStore";
 
+interface LiveRiderMapMarker {
+    request_id: string;
+    rider_name: string;
+    lat: number;
+    lng: number;
+    status: string;
+}
+
 interface TripMapProps {
-    mode?: "plan" | "search" | "view";
+    mode?: "plan" | "search" | "view" | "live";
     from?: TripLocation | null;
     to?: TripLocation | null;
     stops?: StopLocation[];
     routeGeometry?: [number, number][] | null;
     selectedTrip?: TripSearchResult | null;
-    trip?: any | null;
+    trip?: TripMapViewTrip | null;
     driverLocation?: { lat: number, lng: number } | null;
+    completedRoute?: [number, number][] | null;
+    remainingRoute?: [number, number][] | null;
+    liveRiders?: LiveRiderMapMarker[];
     activeField?: "from" | "to" | string | null;
     onMapClick?: (lat: number, lng: number) => void;
+}
+
+interface TripMapStop {
+    id: string;
+    stop_address?: string;
+    lat: number;
+    lng: number;
+}
+
+interface TripMapRider extends TripRider {
+    name?: string;
+    lat?: number;
+    lng?: number;
+}
+
+interface TripMapViewTrip {
+    from_lat: number;
+    from_lng: number;
+    to_lat: number;
+    to_lng: number;
+    from_address: string;
+    to_address: string;
+    route_geometry?: [number, number][] | null;
+    stops?: TripMapStop[];
+    riders?: TripMapRider[];
 }
 
 export default function TripMap({
@@ -36,28 +72,37 @@ export default function TripMap({
     selectedTrip = null,
     trip = null,
     driverLocation = null,
+    completedRoute = null,
+    remainingRoute = null,
+    liveRiders = [],
     activeField = null,
     onMapClick
 }: TripMapProps) {
     const router = useRouter();
     const { latitude, longitude } = useLocationStore();
-    const [viewState, setViewState] = useState({
+    const [manualViewState, setManualViewState] = useState({
         longitude: 85.324,
         latitude: 27.7172,
         zoom: 13
     });
 
-    useEffect(() => {
-        let coords: { lat: number, lng: number }[] = [];
+    const autoViewState = useMemo(() => {
+        const coords: { lat: number, lng: number }[] = [];
 
-        if (mode === 'view' && trip) {
+        if ((mode === 'view' || mode === "live") && trip) {
             coords.push({ lat: trip.from_lat, lng: trip.from_lng });
             coords.push({ lat: trip.to_lat, lng: trip.to_lng });
-            trip.stops?.forEach((s: any) => coords.push({ lat: s.lat, lng: s.lng }));
-            trip.riders?.forEach((r: any) => {
+            trip.stops?.forEach((s) => coords.push({ lat: s.lat, lng: s.lng }));
+            trip.riders?.forEach((r) => {
                 if (r.pickup_lat && r.pickup_lng) coords.push({ lat: r.pickup_lat, lng: r.pickup_lng });
                 if (r.drop_lat && r.drop_lng) coords.push({ lat: r.drop_lat, lng: r.drop_lng });
             });
+            if (driverLocation) {
+                coords.push({ lat: driverLocation.lat, lng: driverLocation.lng });
+            }
+            if (mode === "live") {
+                liveRiders.forEach((r) => coords.push({ lat: r.lat, lng: r.lng }));
+            }
         } else if (from && to) {
             coords.push({ lat: from.lat, lng: from.lng });
             coords.push({ lat: to.lat, lng: to.lng });
@@ -72,22 +117,23 @@ export default function TripMap({
             const minLng = Math.min(...lngs);
             const maxLng = Math.max(...lngs);
 
-            const newLat = (minLat + maxLat) / 2;
-            const newLng = (minLng + maxLng) / 2;
-
-            if (Math.abs(viewState.latitude - newLat) > 0.0001 ||
-                Math.abs(viewState.longitude - newLng) > 0.0001) {
-                setViewState(prev => ({
-                    ...prev,
-                    latitude: newLat,
-                    longitude: newLng,
-                    zoom: 12
-                }));
-            }
+            return {
+                latitude: (minLat + maxLat) / 2,
+                longitude: (minLng + maxLng) / 2,
+                zoom: 12,
+            };
         }
-    }, [mode, trip?.id, trip?.from_lat, trip?.from_lng, from?.lat, from?.lng, to?.lat, to?.lng, stops.length]);
 
-    const handleMapClick = (e: any) => {
+        return {
+            longitude: 85.324,
+            latitude: 27.7172,
+            zoom: 13,
+        };
+    }, [mode, trip, driverLocation, liveRiders, from, to, stops]);
+
+    const effectiveViewState = manualViewState ?? autoViewState;
+
+    const handleMapClick = (e: { lngLat: { lng: number; lat: number } }) => {
         if (!activeField || !onMapClick) return;
         const { lng, lat } = e.lngLat;
         onMapClick(lat, lng);
@@ -102,11 +148,17 @@ export default function TripMap({
         routeGlowColor = "#60a5fa";
     }
 
-    if (mode === "view" && trip?.route_geometry) {
-        displayRoute = trip.route_geometry;
+    if (mode === "view" || mode === "live") {
+        displayRoute = routeGeometry ?? trip?.route_geometry ?? null;
         routeColor = "#10b981";
         routeGlowColor = "#34d399";
     }
+
+    const hasSegmentedLiveRoute = mode === "live"
+        && !!completedRoute
+        && completedRoute.length > 1
+        && !!remainingRoute
+        && remainingRoute.length > 1;
 
     const pickupPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.pickup_route_point) : null;
     const dropPoint = mode === 'search' && selectedTrip ? parseWKT(selectedTrip.drop_route_point) : null;
@@ -114,24 +166,42 @@ export default function TripMap({
     return (
         <div className={`absolute inset-0 w-full h-full contrast-[1.1] transition-all duration-700 ${activeField ? 'grayscale-0' : 'grayscale-[0.4]'}`}>
             <Map
-                {...viewState}
-                onMove={(evt) => setViewState(evt.viewState)}
+                {...effectiveViewState}
+                onMove={(evt: ViewStateChangeEvent) => setManualViewState(evt.viewState)}
                 onClick={handleMapClick}
                 mapStyle="https://tiles.openfreemap.org/styles/dark"
                 style={{ width: "100%", height: "100%", cursor: activeField ? 'crosshair' : 'default' }}
             >
                 <NavigationControl position="bottom-right" />
 
-                {displayRoute && (
-                    <RouteLayer
-                        coordinates={displayRoute}
-                        color={routeColor}
-                        glowColor={routeGlowColor}
-                    />
+                {hasSegmentedLiveRoute ? (
+                    <>
+                        <RouteLayer
+                            idPrefix="route-completed"
+                            coordinates={completedRoute!}
+                            color="#475569"
+                            glowColor="#64748b"
+                        />
+                        <RouteLayer
+                            idPrefix="route-remaining"
+                            coordinates={remainingRoute!}
+                            color="#10b981"
+                            glowColor="#34d399"
+                        />
+                    </>
+                ) : (
+                    displayRoute && (
+                        <RouteLayer
+                            idPrefix="route-main"
+                            coordinates={displayRoute}
+                            color={routeColor}
+                            glowColor={routeGlowColor}
+                        />
+                    )
                 )}
 
                 {/* Markers for View View */}
-                {mode === 'view' && trip && (
+                {(mode === 'view' || mode === "live") && trip && (
                     <>
                         <TripMarker
                             longitude={trip.from_lng}
@@ -147,7 +217,7 @@ export default function TripMap({
                             type="end"
                             address={trip.to_address}
                         />
-                        {trip.stops?.map((stop: any, index: number) => (
+                        {trip.stops?.map((stop, index: number) => (
                             <TripMarker
                                 key={`stop-${stop.id}`}
                                 longitude={stop.lng}
@@ -157,7 +227,7 @@ export default function TripMap({
                             />
                         ))}
 
-                        {trip.riders?.map((rider: any, index: number) => (
+                        {trip.riders?.map((rider) => (
                             <div key={`rider-${rider.request_id}`}>
                                 <RiderMarker
                                     key={`pickup-${rider.request_id}`}
@@ -182,11 +252,21 @@ export default function TripMap({
                                 type="pickup"
                             />
                         )}
+
+                        {mode === "live" && liveRiders.map((rider) => (
+                            <IndicatorMarker
+                                key={`live-rider-${rider.request_id}`}
+                                longitude={rider.lng}
+                                latitude={rider.lat}
+                                label={rider.rider_name.split(" ")[0]}
+                                type={rider.status === "onboard" ? "drop" : "pickup"}
+                            />
+                        ))}
                     </>
                 )}
 
                 {/* Existing Markers for Plan/Search */}
-                {mode !== 'view' && from && (
+                {mode !== 'view' && mode !== "live" && from && (
                     <TripMarker
                         longitude={from.lng}
                         latitude={from.lat}
@@ -197,7 +277,7 @@ export default function TripMap({
                     />
                 )}
 
-                {mode !== 'view' && to && (
+                {mode !== 'view' && mode !== "live" && to && (
                     <TripMarker
                         longitude={to.lng}
                         latitude={to.lat}
@@ -220,7 +300,7 @@ export default function TripMap({
 
                 {mode === 'search' && selectedTrip && (
                     <>
-                        {selectedTrip.stops?.map((stop: any, index: number) => (
+                        {selectedTrip.stops?.map((stop, index: number) => (
                             <TripMarker
                                 key={`trip-stop-${index}`}
                                 longitude={stop.lng}
@@ -230,12 +310,12 @@ export default function TripMap({
                             />
                         ))}
 
-                        {selectedTrip.riders?.map((rider: any, index: number) => (
+                        {selectedTrip.riders?.map((rider, index: number) => (
                             <RiderMarker
                                 key={`trip-rider-${index}`}
-                                longitude={rider.lng}
-                                latitude={rider.lat}
-                                name={rider.name}
+                                longitude={rider.pickup_lng}
+                                latitude={rider.pickup_lat}
+                                name={rider.rider_name}
                             />
                         ))}
 
