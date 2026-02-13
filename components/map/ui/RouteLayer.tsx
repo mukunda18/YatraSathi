@@ -4,14 +4,15 @@ interface RouteLayerProps {
     coordinates: number[][];
     color: string;
     glowColor: string;
+    idPrefix?: string;
 }
 
-export default function RouteLayer({ coordinates, color, glowColor }: RouteLayerProps) {
+export default function RouteLayer({ coordinates, color, glowColor, idPrefix = "route" }: RouteLayerProps) {
     if (!coordinates || coordinates.length === 0) return null;
 
     return (
         <Source
-            id="route"
+            id={`${idPrefix}-source`}
             type="geojson"
             data={{
                 type: 'Feature',
@@ -23,7 +24,7 @@ export default function RouteLayer({ coordinates, color, glowColor }: RouteLayer
             }}
         >
             <Layer
-                id="route-line"
+                id={`${idPrefix}-line`}
                 type="line"
                 paint={{
                     'line-color': color,
@@ -37,7 +38,7 @@ export default function RouteLayer({ coordinates, color, glowColor }: RouteLayer
                 }}
             />
             <Layer
-                id="route-glow"
+                id={`${idPrefix}-glow`}
                 type="line"
                 paint={{
                     'line-color': glowColor,

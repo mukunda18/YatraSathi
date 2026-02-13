@@ -5,7 +5,7 @@ import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, 
 import { useState } from "react";
 import Link from "next/link";
 import { cancelBookingAction } from "@/app/actions/tripActions";
-import { updateTripStatusAction, cancelTripAction } from "@/app/actions/driverActions";
+import { startTripAction, cancelTripAction } from "@/app/actions/driverActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
 import Card from "@/components/UI/Card";
@@ -88,10 +88,10 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const handleStartTrip = async () => {
         setIsStatusLoading(true);
         try {
-            const result = await updateTripStatusAction(currentTrip.trip_id, 'ongoing');
+            const result = await startTripAction(currentTrip.trip_id);
             if (result.success) {
                 toast.success(result.message);
-                window.location.reload();
+                window.location.href = "/driver/live";
             } else {
                 toast.error(result.message);
             }
@@ -120,7 +120,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             </span>
                             {currentTrip.trip_status === 'ongoing' && (
                                 <Link
-                                    href={`/live/${currentTrip.trip_id}`}
+                                    href={isDriver ? "/driver/live" : `/live/${currentTrip.trip_id}`}
                                     className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 animate-pulse transition-all hover:bg-red-500/20"
                                 >
                                     <HiStatusOnline className="w-4 h-4 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
@@ -335,7 +335,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
                         {isDriver && currentTrip.trip_status === 'ongoing' && (
                             <Link
-                                href={`/live/${currentTrip.trip_id}`}
+                                href="/driver/live"
                                 className="w-full py-4 bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 rounded-2xl text-xs font-black uppercase tracking-widest transition-all animate-pulse text-center block"
                             >
                                 Live Tracking

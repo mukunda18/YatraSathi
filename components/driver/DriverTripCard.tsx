@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cancelTripAction, updateRequestStatusAction, updateTripStatusAction } from "@/app/actions/driverActions";
+import { cancelTripAction, markRiderDroppedOffAction, markRiderOnboardAction, startTripAction } from "@/app/actions/driverActions";
 import { cancelBookingAction } from "@/app/actions/tripActions";
 import { HiX, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
 import { toast } from "sonner";
@@ -10,8 +10,33 @@ import Card from "../UI/Card";
 
 import Link from "next/link";
 
+interface DriverTripRequest {
+    request_id?: string;
+    id?: string;
+    rider_id?: string;
+    rider_name: string;
+    rider_phone?: string;
+    pickup_address: string;
+    drop_address: string;
+    seats: number;
+    total_fare: number;
+    status: string;
+}
+
+interface DriverTripCardData {
+    trip_id: string;
+    from_address: string;
+    to_address: string;
+    travel_date: string;
+    fare_per_seat: number;
+    total_seats: number;
+    available_seats: number;
+    trip_status: string;
+    ride_requests: DriverTripRequest[];
+}
+
 interface TripCardProps {
-    trip: any;
+    trip: DriverTripCardData;
     onUpdate: () => void;
 }
 
@@ -23,6 +48,8 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
     const [removeReason, setRemoveReason] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    const getRequestId = (request: DriverTripRequest) => request.request_id || request.id || "";
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -53,10 +80,10 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
     const handleStartTrip = async () => {
         setIsLoading(true);
         try {
-            const result = await updateTripStatusAction(trip.trip_id, 'ongoing');
+            const result = await startTripAction(trip.trip_id);
             if (result.success) {
                 toast.success(result.message);
-                onUpdate();
+                window.location.href = "/driver/live";
             } else {
                 toast.error(result.message);
             }
@@ -84,7 +111,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
         }
     };
 
-    const waitingRequests = trip.ride_requests.filter((r: any) => r.status === "waiting" || r.status === "onboard");
+    const waitingRequests = trip.ride_requests.filter((r) => r.status === "waiting" || r.status === "onboard");
 
     return (
         <>
@@ -137,7 +164,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                             {trip.trip_status === 'ongoing' && (
                                 <>
                                     <Link
-                                        href={`/live/${trip.trip_id}`}
+                                        href="/driver/live"
                                         className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all animate-pulse"
                                     >
                                         Live
@@ -167,8 +194,10 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
 
                 {expanded && trip.ride_requests.length > 0 && (
                     <div className="border-t border-white/5 divide-y divide-white/5">
-                        {trip.ride_requests.map((request: any) => (
-                            <div key={request.request_id} className="p-4 bg-slate-950/30">
+                        {trip.ride_requests.map((request) => {
+                            const requestId = getRequestId(request);
+                            return (
+                            <div key={requestId} className="p-4 bg-slate-950/30">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 min-w-0">
                                         <span className="text-sm font-bold text-white">{request.rider_name}</span>
@@ -199,7 +228,16 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                         <div className="flex items-center gap-2">
                                             {request.status === "waiting" && trip.trip_status === "ongoing" && (
                                                 <button
-                                                    onClick={() => updateRequestStatusAction(request.request_id, 'onboard')}
+                                                    onClick={async () => {
+                                                        if (!requestId) return;
+                                                        const result = await markRiderOnboardAction(requestId);
+                                                        if (result.success) {
+                                                            toast.success(result.message);
+                                                            onUpdate();
+                                                            return;
+                                                        }
+                                                        toast.error(result.message);
+                                                    }}
                                                     className="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
                                                 >
                                                     Onboard
@@ -207,7 +245,16 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                             )}
                                             {request.status === "onboard" && (
                                                 <button
-                                                    onClick={() => updateRequestStatusAction(request.request_id, 'dropedoff')}
+                                                    onClick={async () => {
+                                                        if (!requestId) return;
+                                                        const result = await markRiderDroppedOffAction(requestId);
+                                                        if (result.success) {
+                                                            toast.success(result.message);
+                                                            onUpdate();
+                                                            return;
+                                                        }
+                                                        toast.error(result.message);
+                                                    }}
                                                     className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
                                                 >
                                                     Drop Off
@@ -216,9 +263,11 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                             {request.status === "waiting" && trip.trip_status === "scheduled" && (
                                                 <button
                                                     onClick={() => {
-                                                        setSelectedRequestId(request.request_id);
+                                                        if (!requestId) return;
+                                                        setSelectedRequestId(requestId);
                                                         setShowRemoveRiderModal(true);
                                                     }}
+                                                    disabled={!requestId}
                                                     className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
                                                     title="Cancel Request"
                                                 >
@@ -231,7 +280,8 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 
@@ -252,7 +302,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                     </div>
 
                     <p className="text-sm text-slate-400 mb-4">
-                        Are you sure you want to cancel this rider's booking?
+                        Are you sure you want to cancel this rider&apos;s booking?
                     </p>
 
                     <textarea
