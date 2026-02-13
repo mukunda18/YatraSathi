@@ -17,22 +17,27 @@ export default function LoginForm() {
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const connecting = useAuthStore((state) => state.connecting);
+    const setConnecting = useAuthStore((state) => state.setConnecting);
+    const setAuthError = useAuthStore((state) => state.setError);
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        useAuthStore.setState({ connecting: true });
+        setAuthError(null);
+        setConnecting(true);
 
         const result = await loginAction({ email, password });
 
         if (result.success && result.user) {
-            useAuthStore.setState({ ...result.user, connecting: false });
+            useAuthStore.setState({ ...result.user, connecting: false, error: null });
             toast.success(`Welcome back, ${result.user.name}!`);
             router.push("/");
         } else {
             setErrors(result.errors || {});
-            toast.error(result.message || "Invalid credentials");
-            useAuthStore.setState({ connecting: false });
+            const message = result.message || "Invalid credentials";
+            setAuthError(message);
+            toast.error(message);
+            setConnecting(false);
         }
     };
 

@@ -51,7 +51,7 @@ export default function TripResultCard({ trip, isSelected, onClick, from, to }: 
             } else {
                 toast.error(result.message || "Failed to send ride request");
             }
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred");
         } finally {
             setLoading(false);

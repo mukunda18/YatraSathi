@@ -97,11 +97,30 @@ CREATE TABLE IF NOT EXISTS ride_requests (
     seats INT NOT NULL DEFAULT 1 CHECK (seats > 0),
     total_fare NUMERIC(10, 2) NOT NULL CHECK (total_fare >= 0),
     status TEXT NOT NULL DEFAULT 'waiting',
+    cancelled_at TIMESTAMPTZ,
+    cancelled_reason TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(rider_id, trip_id)
 );
 CREATE INDEX IF NOT EXISTS idx_ride_requests_trip_id ON ride_requests(trip_id);
+-- 4.5 TRIP RATINGS
+CREATE TABLE IF NOT EXISTS trip_ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    request_id UUID NOT NULL REFERENCES ride_requests(id) ON DELETE CASCADE,
+    rater_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rated_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('rider_to_driver', 'driver_to_rider')),
+    rating INT NOT NULL CHECK (
+        rating BETWEEN 1 AND 5
+    ),
+    comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(request_id, role)
+);
+CREATE INDEX IF NOT EXISTS idx_trip_ratings_trip_id ON trip_ratings(trip_id);
+CREATE INDEX IF NOT EXISTS idx_trip_ratings_rated_user ON trip_ratings(rated_user_id);
 -- 5. LIVE TRACKING
 CREATE TABLE IF NOT EXISTS live_trips (
     trip_id UUID PRIMARY KEY REFERENCES trips(id) ON DELETE CASCADE,
@@ -115,7 +134,7 @@ CREATE INDEX IF NOT EXISTS idx_live_trips_location ON live_trips USING GIST(curr
 CREATE TABLE IF NOT EXISTS live_users (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     current_location GEOGRAPHY(POINT, 4326) NOT NULL,
-    status TEXT DEFAULT 'online',
+    status TEXT DEFAULT 'offline',
     last_updated TIMESTAMPTZ DEFAULT now()
 );
 -- TRIGGERS

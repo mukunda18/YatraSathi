@@ -10,10 +10,19 @@ interface DriverPosition {
     lastUpdated: string | null;
 }
 
+interface LiveRiderPosition {
+    riderId: string;
+    riderName: string;
+    lat: number;
+    lng: number;
+    status: string;
+}
+
 interface LiveTripState {
     trip: TripViewData | null;
     route: RoutePoint[];
     driverPosition: DriverPosition | null;
+    liveRiders: LiveRiderPosition[];
     completedRoute: RoutePoint[];
     remainingRoute: RoutePoint[];
     progressPercent: number;
@@ -23,6 +32,7 @@ interface LiveTripState {
     hasLiveData: boolean;
     initializeFromTrip: (trip: TripViewData) => void;
     setDriverPosition: (position: DriverPosition | null) => void;
+    upsertLiveRiderPosition: (rider: LiveRiderPosition) => void;
     clear: () => void;
 }
 
@@ -61,6 +71,7 @@ const initialState = {
     trip: null,
     route: [],
     driverPosition: null,
+    liveRiders: [],
     completedRoute: [],
     remainingRoute: [],
     progressPercent: 0,
@@ -89,6 +100,15 @@ export const useLiveTripStore = create<LiveTripState>((set, get) => ({
         }
 
         set(calculateState(trip, position));
+    },
+
+    upsertLiveRiderPosition: (rider) => {
+        set((state) => {
+            const next = state.liveRiders.some((r) => r.riderId === rider.riderId)
+                ? state.liveRiders.map((r) => (r.riderId === rider.riderId ? rider : r))
+                : [...state.liveRiders, rider];
+            return { liveRiders: next };
+        });
     },
 
     clear: () => set(initialState),

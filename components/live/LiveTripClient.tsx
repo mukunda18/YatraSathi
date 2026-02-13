@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiArrowLeft, HiClock, HiLocationMarker } from "react-icons/hi";
 import TripMap from "@/components/map/TripMap";
 import { useLiveTripStore } from "@/store/liveTripStore";
 import { TripViewData } from "@/store/types";
+import { useLocationStore } from "@/store/locationStore";
+import { useSocket } from "@/hooks/useSocket";
+import { toast } from "sonner";
+import { formatDistanceKm } from "@/utils/formatters";
+import { getGoApi, postGoApi } from "@/utils/goApiClient";
+import { toTripViewData } from "@/utils/tripParsers";
 
 interface LiveTripClientProps {
-    trip: TripViewData;
+    tripId: string;
+    viewerUserId: string;
 }
 
-const formatDistance = (value: number) => `${value.toFixed(1)} km`;
-
-export default function LiveTripClient({ trip }: LiveTripClientProps) {
+export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientProps) {
     const router = useRouter();
+    const [baseTrip, setBaseTrip] = useState<TripViewData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const joinedTripRef = useRef<string | null>(null);
     const initializeFromTrip = useLiveTripStore((state) => state.initializeFromTrip);
     const clear = useLiveTripStore((state) => state.clear);
     const liveTrip = useLiveTripStore((state) => state.trip);
@@ -26,18 +34,161 @@ export default function LiveTripClient({ trip }: LiveTripClientProps) {
     const completedDistanceKm = useLiveTripStore((state) => state.completedDistanceKm);
     const remainingDistanceKm = useLiveTripStore((state) => state.remainingDistanceKm);
     const totalDistanceKm = useLiveTripStore((state) => state.totalDistanceKm);
+    const upsertLiveRiderPosition = useLiveTripStore((state) => state.upsertLiveRiderPosition);
+    const liveRiders = useLiveTripStore((state) => state.liveRiders);
+    const geoLat = useLocationStore((state) => state.latitude);
+    const geoLng = useLocationStore((state) => state.longitude);
+    const geoHeading = useLocationStore((state) => state.heading);
+    const geoSpeed = useLocationStore((state) => state.speed);
 
     useEffect(() => {
-        initializeFromTrip(trip);
-        return () => clear();
-    }, [trip, initializeFromTrip, clear]);
+        let mounted = true;
+        const load = async () => {
+            const result = await getGoApi<Record<string, unknown>>(`/api/live/trips/${tripId}`);
+            if (!mounted) return;
+            if (!result.success || !result.trip) {
+                router.replace(`/trips/${tripId}`);
+                return;
+            }
+            const parsed = toTripViewData(result.trip, "LiveTripClient");
+            setBaseTrip(parsed);
+            initializeFromTrip(parsed);
+            setLoading(false);
+        };
+        void load();
+        return () => {
+            mounted = false;
+            clear();
+        };
+    }, [tripId, initializeFromTrip, clear, router]);
 
-    const displayTrip = liveTrip || trip;
+    const isDriver = useMemo(() => {
+        if (!baseTrip) return false;
+        return baseTrip.driver_user_id === viewerUserId;
+    }, [baseTrip, viewerUserId]);
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
+    const { isConnected, sendMessage } = useSocket(`${wsUrl}/ws`, {
+        onMessage: (message) => {
+            if (!baseTrip) return;
+            if (message.event === "trip_completed" && typeof message.payload === "object" && message.payload) {
+                const payload = message.payload as Record<string, unknown>;
+                if (payload.tripId !== baseTrip.trip_id) return;
+                toast.success("Trip completed");
+                router.replace(`/trips/${baseTrip.trip_id}`);
+                return;
+            }
+            if (message.event === "rider_dropped_off" && typeof message.payload === "object" && message.payload) {
+                const payload = message.payload as Record<string, unknown>;
+                if (payload.tripId !== baseTrip.trip_id) return;
+                if (String(payload.riderId || "") !== viewerUserId) return;
+                toast.success("You are now dropped off.");
+                router.replace(`/trips/${baseTrip.trip_id}`);
+                return;
+            }
+            if (message.event === "driver_location_updated" && typeof message.payload === "object" && message.payload) {
+                const payload = message.payload as Record<string, unknown>;
+                if (payload.tripId !== baseTrip.trip_id) return;
+                if (payload.userId !== baseTrip.driver_user_id) return;
+                const lat = Number(payload.lat);
+                const lng = Number(payload.lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                useLiveTripStore.getState().setDriverPosition({
+                    lat,
+                    lng,
+                    heading: payload.heading == null ? null : Number(payload.heading),
+                    speedKmph: payload.speedKmph == null ? null : Number(payload.speedKmph),
+                    lastUpdated: typeof payload.updatedAt === "string" ? payload.updatedAt : null,
+                });
+                return;
+            }
+
+            if (message.event === "rider_location_updated" && typeof message.payload === "object" && message.payload) {
+                const payload = message.payload as Record<string, unknown>;
+                if (payload.tripId !== baseTrip.trip_id) return;
+                const lat = Number(payload.lat);
+                const lng = Number(payload.lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                upsertLiveRiderPosition({
+                    riderId: String(payload.userId || ""),
+                    riderName: String(payload.riderName || "Rider"),
+                    lat,
+                    lng,
+                    status: String(payload.status || "online"),
+                });
+            }
+        },
+    });
+
+    useEffect(() => {
+        if (!isConnected || !baseTrip) return;
+        if (joinedTripRef.current === baseTrip.trip_id) return;
+
+        sendMessage("join_trip", {
+            tripId: baseTrip.trip_id,
+            role: isDriver ? "driver" : "rider",
+        });
+        joinedTripRef.current = baseTrip.trip_id;
+    }, [isConnected, baseTrip, isDriver, sendMessage]);
+
+    useEffect(() => {
+        if (!isConnected) {
+            joinedTripRef.current = null;
+        }
+    }, [isConnected]);
+
+    useEffect(() => {
+        if (!isConnected || geoLat == null || geoLng == null || !baseTrip) return;
+
+        const sendCurrent = () => {
+            sendMessage("location_update", {
+                tripId: baseTrip.trip_id,
+                lat: geoLat,
+                lng: geoLng,
+                heading: geoHeading,
+                speedKmph: geoSpeed == null ? null : geoSpeed * 3.6,
+            });
+        };
+
+        sendCurrent();
+        const id = setInterval(sendCurrent, 3000);
+        return () => clearInterval(id);
+    }, [isConnected, geoLat, geoLng, geoHeading, geoSpeed, baseTrip, sendMessage]);
+
+    const displayTrip = liveTrip || baseTrip;
     const currentTimeLabel = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const updatedAtLabel = driverPosition?.lastUpdated
         ? new Date(driverPosition.lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "--:--";
     const speedLabel = driverPosition?.speedKmph != null ? `${driverPosition.speedKmph.toFixed(0)} km/h` : "--";
+    const canMarkOnboard = !isDriver && displayTrip?.my_request?.status === "waiting";
+    const canMarkDropoff = !isDriver && displayTrip?.my_request?.status === "onboard";
+
+    const handleMarkOnboard = async () => {
+        if (!displayTrip?.my_request?.id) return;
+        const result = await postGoApi(`/api/requests/${displayTrip.my_request.id}/onboard`);
+        if (result.success) {
+            toast.success(result.message);
+            router.refresh();
+            return;
+        }
+        toast.error(result.message);
+    };
+
+    const handleMarkDropoff = async () => {
+        if (!displayTrip?.my_request?.id) return;
+        const result = await postGoApi(`/api/requests/${displayTrip.my_request.id}/dropoff`);
+        if (result.success) {
+            toast.success(result.message);
+            router.push(result.redirectTo || `/trips/${displayTrip.trip_id}`);
+            return;
+        }
+        toast.error(result.message);
+    };
+
+    if (loading || !displayTrip) {
+        return <main className="min-h-screen bg-slate-950" />;
+    }
 
     return (
         <div className="relative flex h-screen w-full flex-col overflow-hidden">
@@ -75,6 +226,13 @@ export default function LiveTripClient({ trip }: LiveTripClientProps) {
                     routeGeometry={route}
                     completedRoute={completedRoute}
                     remainingRoute={remainingRoute}
+                    liveRiders={liveRiders.map((rider) => ({
+                        request_id: rider.riderId,
+                        rider_name: rider.riderName,
+                        lat: rider.lat,
+                        lng: rider.lng,
+                        status: rider.status,
+                    }))}
                 />
             </div>
 
@@ -97,11 +255,11 @@ export default function LiveTripClient({ trip }: LiveTripClientProps) {
                         </div>
                         <div className="rounded-xl border border-white/5 bg-slate-900/50 px-3 py-2">
                             <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Completed</p>
-                            <p className="text-xs font-bold text-white">{formatDistance(completedDistanceKm)}</p>
+                            <p className="text-xs font-bold text-white">{formatDistanceKm(completedDistanceKm)}</p>
                         </div>
                         <div className="rounded-xl border border-white/5 bg-slate-900/50 px-3 py-2">
                             <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Remaining</p>
-                            <p className="text-xs font-bold text-white">{formatDistance(remainingDistanceKm)}</p>
+                            <p className="text-xs font-bold text-white">{formatDistanceKm(remainingDistanceKm)}</p>
                         </div>
                         <div className="rounded-xl border border-white/5 bg-slate-900/50 px-3 py-2">
                             <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Speed</p>
@@ -119,8 +277,29 @@ export default function LiveTripClient({ trip }: LiveTripClientProps) {
                         <HiClock className="h-3 w-3 text-slate-400" />
                         Driver Update {updatedAtLabel}
                     </span>
-                    <span>Total {formatDistance(totalDistanceKm)}</span>
+                    <span>Total {formatDistanceKm(totalDistanceKm)}</span>
                 </div>
+
+                {!isDriver && (canMarkOnboard || canMarkDropoff) && (
+                    <div className="mx-auto mt-3 flex max-w-3xl justify-end">
+                        {canMarkOnboard && (
+                            <button
+                                onClick={handleMarkOnboard}
+                                className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:bg-indigo-500/20"
+                            >
+                                I am Onboard
+                            </button>
+                        )}
+                        {canMarkDropoff && (
+                            <button
+                                onClick={handleMarkDropoff}
+                                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20"
+                            >
+                                I am Dropped Off
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

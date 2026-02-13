@@ -117,7 +117,7 @@ export default function TripSearchForm() {
             } else {
                 toast.error(result.message || "Search failed");
             }
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred during search.");
         } finally {
             setLoading(false);
@@ -212,7 +212,7 @@ export default function TripSearchForm() {
                                 ))}
                             </>
                         ) : (
-                            <div className="h-full min-h-[200px] flex flex-col items-center justify-center gap-3 border border-white/5 rounded-3xl border-dashed opacity-50">
+                            <div className="h-full min-h-50 flex flex-col items-center justify-center gap-3 border border-white/5 rounded-3xl border-dashed opacity-50">
                                 <HiLocationMarker className="w-8 h-8 text-slate-800" />
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 text-center px-8 leading-loose">Enter points to find rides</p>
                             </div>

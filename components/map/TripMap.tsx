@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Map, { NavigationControl, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import { useRouter } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -86,52 +86,7 @@ export default function TripMap({
         zoom: 13
     });
 
-    const autoViewState = useMemo(() => {
-        const coords: { lat: number, lng: number }[] = [];
-
-        if ((mode === 'view' || mode === "live") && trip) {
-            coords.push({ lat: trip.from_lat, lng: trip.from_lng });
-            coords.push({ lat: trip.to_lat, lng: trip.to_lng });
-            trip.stops?.forEach((s) => coords.push({ lat: s.lat, lng: s.lng }));
-            trip.riders?.forEach((r) => {
-                if (r.pickup_lat && r.pickup_lng) coords.push({ lat: r.pickup_lat, lng: r.pickup_lng });
-                if (r.drop_lat && r.drop_lng) coords.push({ lat: r.drop_lat, lng: r.drop_lng });
-            });
-            if (driverLocation) {
-                coords.push({ lat: driverLocation.lat, lng: driverLocation.lng });
-            }
-            if (mode === "live") {
-                liveRiders.forEach((r) => coords.push({ lat: r.lat, lng: r.lng }));
-            }
-        } else if (from && to) {
-            coords.push({ lat: from.lat, lng: from.lng });
-            coords.push({ lat: to.lat, lng: to.lng });
-            stops.forEach(s => coords.push({ lat: s.lat, lng: s.lng }));
-        }
-
-        if (coords.length > 1) {
-            const lats = coords.map(c => c.lat);
-            const lngs = coords.map(c => c.lng);
-            const minLat = Math.min(...lats);
-            const maxLat = Math.max(...lats);
-            const minLng = Math.min(...lngs);
-            const maxLng = Math.max(...lngs);
-
-            return {
-                latitude: (minLat + maxLat) / 2,
-                longitude: (minLng + maxLng) / 2,
-                zoom: 12,
-            };
-        }
-
-        return {
-            longitude: 85.324,
-            latitude: 27.7172,
-            zoom: 13,
-        };
-    }, [mode, trip, driverLocation, liveRiders, from, to, stops]);
-
-    const effectiveViewState = manualViewState ?? autoViewState;
+    const effectiveViewState = manualViewState;
 
     const handleMapClick = (e: { lngLat: { lng: number; lat: number } }) => {
         if (!activeField || !onMapClick) return;

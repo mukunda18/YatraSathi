@@ -1,6 +1,8 @@
 "use server";
 
 import { searchTrips } from "@/db/db";
+import { TripSearchResult } from "@/store/types";
+import { toTripSearchResult } from "@/utils/tripParsers";
 
 export async function searchTripsAction(data: {
     from_location: { lat: number; lng: number };
@@ -12,26 +14,9 @@ export async function searchTripsAction(data: {
     try {
         const trips = await searchTrips(fromPoint, toPoint);
 
-        const parsedTrips = trips.map(trip => {
-            let coordinates: [number, number][] = [];
-
-            if (trip.route_geojson) {
-                try {
-                    const geojson = JSON.parse(trip.route_geojson);
-                    if (geojson.type === 'LineString') {
-                        coordinates = geojson.coordinates;
-                    }
-                } catch (e) {
-                    console.error("Error parsing GeoJSON route", e);
-                }
-            }
-
-            const { route_geojson, ...rest } = trip;
-            return {
-                ...rest,
-                route_geometry: coordinates
-            };
-        });
+        const parsedTrips: TripSearchResult[] = trips.map((trip) =>
+            toTripSearchResult(trip as Record<string, unknown>, "searchTripsAction")
+        );
 
         return { success: true, trips: parsedTrips };
     } catch (error) {

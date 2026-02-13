@@ -4,13 +4,14 @@ import TripMap from "@/components/map/TripMap";
 import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
 import Link from "next/link";
-import { cancelBookingAction } from "@/app/actions/tripActions";
-import { startTripAction, cancelTripAction } from "@/app/actions/driverActions";
+import { cancelBookingAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
+import { cancelTripAction } from "@/app/actions/driverActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
 import Card from "@/components/UI/Card";
 import Overlay from "@/components/UI/Overlay";
 import { TripViewData } from "@/store/types";
+import { postGoApi } from "@/utils/goApiClient";
 
 interface TripViewClientProps {
     initialTrip: TripViewData;
@@ -24,6 +25,20 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const [cancelMode, setCancelMode] = useState<"trip" | "booking" | null>(null);
     const [cancelReason, setCancelReason] = useState("");
     const [isStatusLoading, setIsStatusLoading] = useState(false);
+    const [riderRating, setRiderRating] = useState(5);
+    const [riderComment, setRiderComment] = useState("");
+    const [isSubmittingDriverRating, setIsSubmittingDriverRating] = useState(false);
+    const [ratedDriver, setRatedDriver] = useState(Boolean(currentTrip.my_request?.rated_driver));
+    const [driverRatings, setDriverRatings] = useState<Record<string, number>>({});
+    const [driverComments, setDriverComments] = useState<Record<string, string>>({});
+    const [ratingRiderRequestId, setRatingRiderRequestId] = useState<string | null>(null);
+    const [ratedRiderByRequest, setRatedRiderByRequest] = useState<Record<string, boolean>>(() => {
+        const initial: Record<string, boolean> = {};
+        currentTrip.riders?.forEach((rider) => {
+            initial[rider.request_id] = Boolean(rider.rated_by_driver);
+        });
+        return initial;
+    });
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -45,17 +60,18 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const confirmCancelTrip = async () => {
         setCancelling(true);
         try {
-            const result = await cancelTripAction(currentTrip.trip_id);
+            const result = await cancelTripAction(currentTrip.trip_id, cancelReason);
             if (result.success) {
                 toast.success(result.message);
             } else {
                 toast.error(result.message);
             }
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred");
         } finally {
             setCancelling(false);
             setShowCancelModal(false);
+            setCancelReason("");
         }
     };
 
@@ -76,7 +92,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
             } else {
                 toast.error(result.message);
             }
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred");
         } finally {
             setCancelling(false);
@@ -88,17 +104,55 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const handleStartTrip = async () => {
         setIsStatusLoading(true);
         try {
-            const result = await startTripAction(currentTrip.trip_id);
+            const result = await postGoApi(`/api/trips/${currentTrip.trip_id}/start`);
             if (result.success) {
                 toast.success(result.message);
                 window.location.href = "/driver/live";
             } else {
                 toast.error(result.message);
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to start trip");
         } finally {
             setIsStatusLoading(false);
+        }
+    };
+
+    const handleRateDriver = async () => {
+        if (!currentTrip.my_request?.id || ratedDriver) return;
+        setIsSubmittingDriverRating(true);
+        try {
+            const result = await rateDriverForCompletedTripAction(currentTrip.my_request.id, riderRating, riderComment);
+            if (result.success) {
+                toast.success(result.message);
+                setRatedDriver(true);
+            } else {
+                toast.error(result.message);
+            }
+        } catch {
+            toast.error("Failed to submit rating");
+        } finally {
+            setIsSubmittingDriverRating(false);
+        }
+    };
+
+    const handleRateRider = async (requestId: string) => {
+        if (ratedRiderByRequest[requestId]) return;
+        setRatingRiderRequestId(requestId);
+        try {
+            const score = driverRatings[requestId] ?? 5;
+            const comment = driverComments[requestId] ?? "";
+            const result = await rateRiderForCompletedTripAction(requestId, score, comment);
+            if (result.success) {
+                toast.success(result.message);
+                setRatedRiderByRequest((prev) => ({ ...prev, [requestId]: true }));
+            } else {
+                toast.error(result.message);
+            }
+        } catch {
+            toast.error("Failed to submit rating");
+        } finally {
+            setRatingRiderRequestId(null);
         }
     };
 
@@ -268,6 +322,44 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                                                     <p className="text-[10px] text-slate-400 font-medium leading-relaxed truncate">{rider.drop_address}</p>
                                                 </div>
                                             </div>
+
+                                            {currentTrip.trip_status === "completed" && rider.status === "dropedoff" && (
+                                                <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+                                                    {ratedRiderByRequest[rider.request_id] ? (
+                                                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Rider rated</p>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-2">
+                                                                <label className="text-[10px] font-bold text-slate-500">Rate rider</label>
+                                                                <select
+                                                                    value={driverRatings[rider.request_id] ?? 5}
+                                                                    onChange={(e) => setDriverRatings((prev) => ({ ...prev, [rider.request_id]: Number(e.target.value) }))}
+                                                                    className="rounded-lg border border-white/10 bg-slate-800 px-2 py-1 text-[11px] text-white focus:outline-none"
+                                                                >
+                                                                    {[5, 4, 3, 2, 1].map((score) => (
+                                                                        <option key={score} value={score}>{score} star{score > 1 ? "s" : ""}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                            <textarea
+                                                                value={driverComments[rider.request_id] ?? ""}
+                                                                onChange={(e) => setDriverComments((prev) => ({ ...prev, [rider.request_id]: e.target.value }))}
+                                                                placeholder="Optional feedback"
+                                                                rows={2}
+                                                                className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRateRider(rider.request_id)}
+                                                                disabled={ratingRiderRequestId === rider.request_id}
+                                                                className="w-full rounded-xl bg-indigo-600 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-indigo-500 disabled:opacity-60"
+                                                            >
+                                                                {ratingRiderRequestId === rider.request_id ? "Submitting..." : "Submit Rider Rating"}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 ) : (
@@ -307,6 +399,45 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                         </div>
                     )}
 
+                    {!isDriver && currentTrip.trip_status === "completed" && currentTrip.my_request?.status === "dropedoff" && (
+                        <div className="p-6 bg-slate-900/40 border border-white/10 rounded-3xl">
+                            <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Rate Driver</h3>
+                            {ratedDriver ? (
+                                <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Thanks, rating submitted.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[10px] font-bold text-slate-500">Your Rating</label>
+                                        <select
+                                            value={riderRating}
+                                            onChange={(e) => setRiderRating(Number(e.target.value))}
+                                            className="rounded-lg border border-white/10 bg-slate-800 px-2 py-1 text-[11px] text-white focus:outline-none"
+                                        >
+                                            {[5, 4, 3, 2, 1].map((score) => (
+                                                <option key={score} value={score}>{score} star{score > 1 ? "s" : ""}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <textarea
+                                        value={riderComment}
+                                        onChange={(e) => setRiderComment(e.target.value)}
+                                        placeholder="Optional feedback"
+                                        rows={2}
+                                        className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleRateDriver}
+                                        disabled={isSubmittingDriverRating}
+                                        className="w-full rounded-xl bg-indigo-600 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-indigo-500 disabled:opacity-60"
+                                    >
+                                        {isSubmittingDriverRating ? "Submitting..." : "Submit Driver Rating"}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Description */}
                     {currentTrip.description && (
                         <div className="pt-2">
@@ -342,7 +473,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             </Link>
                         )}
 
-                        {isDriver && currentTrip.trip_status !== 'cancelled' && currentTrip.trip_status !== 'completed' && (
+                        {isDriver && currentTrip.trip_status === 'scheduled' && (
                             <button
                                 onClick={handleCancelTrip}
                                 disabled={cancelling}
@@ -359,7 +490,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             </button>
                         )}
 
-                        {!isDriver && currentTrip.my_request && currentTrip.my_request.status !== 'cancelled' && (
+                        {!isDriver && currentTrip.my_request && currentTrip.my_request.status === 'waiting' && currentTrip.trip_status === 'scheduled' && (
                             <button
                                 onClick={handleCancelBooking}
                                 disabled={cancelling}

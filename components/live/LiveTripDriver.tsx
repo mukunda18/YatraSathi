@@ -1,25 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { HiArrowLeft, HiClock, HiLocationMarker, HiPhone, HiUserGroup } from "react-icons/hi";
-import { toast } from "sonner";
-import { markRiderDroppedOffAction, markRiderOnboardAction } from "@/app/actions/driverActions";
 import TripMap from "@/components/map/TripMap";
 import { useLiveDriverStore } from "@/store/liveDriverStore";
 import { LiveDriverTripData } from "@/store/types";
+import { useLocationStore } from "@/store/locationStore";
+import { useSocket } from "@/hooks/useSocket";
+import { toast } from "sonner";
+import { formatCoordinate, formatDistanceKm } from "@/utils/formatters";
+import { distanceMeters } from "@/utils/geo";
+import { getGoApi, postGoApi } from "@/utils/goApiClient";
+import { toLiveDriverTripData } from "@/utils/tripParsers";
 
-interface LiveTripDriverProps {
-    trip: LiveDriverTripData;
-}
-
-const formatDistance = (value: number) => `${value.toFixed(1)} km`;
-
-const formatCoord = (value: number | null | undefined) =>
-    value == null ? "--" : value.toFixed(5);
-
-export default function LiveTripDriver({ trip }: LiveTripDriverProps) {
-    const [isUpdating, setIsUpdating] = useState<string | null>(null);
+export default function LiveTripDriver() {
+    const router = useRouter();
+    const [isCompleting, setIsCompleting] = useState(false);
+    const [baseTrip, setBaseTrip] = useState<LiveDriverTripData | null>(null);
+    const joinedTripRef = useRef<string | null>(null);
     const initializeFromTrip = useLiveDriverStore((state) => state.initializeFromTrip);
     const clear = useLiveDriverStore((state) => state.clear);
     const liveTrip = useLiveDriverStore((state) => state.trip);
@@ -32,35 +32,123 @@ export default function LiveTripDriver({ trip }: LiveTripDriverProps) {
     const progressPercent = useLiveDriverStore((state) => state.progressPercent);
     const completedDistanceKm = useLiveDriverStore((state) => state.completedDistanceKm);
     const remainingDistanceKm = useLiveDriverStore((state) => state.remainingDistanceKm);
+    const upsertLiveRiderPosition = useLiveDriverStore((state) => state.upsertLiveRiderPosition);
+    const geoLat = useLocationStore((state) => state.latitude);
+    const geoLng = useLocationStore((state) => state.longitude);
+    const geoHeading = useLocationStore((state) => state.heading);
+    const geoSpeed = useLocationStore((state) => state.speed);
 
     useEffect(() => {
-        initializeFromTrip(trip);
-        return () => clear();
-    }, [trip, initializeFromTrip, clear]);
+        let mounted = true;
+        const load = async () => {
+            const result = await getGoApi<Record<string, unknown>>("/api/live/driver/current");
+            if (!mounted) return;
+            if (!result.success || !result.trip) {
+                router.replace("/driver/dashboard");
+                return;
+            }
+            const parsed = toLiveDriverTripData(result.trip, "LiveTripDriver");
+            setBaseTrip(parsed);
+            initializeFromTrip(parsed);
+        };
+        void load();
+        return () => {
+            mounted = false;
+            clear();
+        };
+    }, [initializeFromTrip, clear, router]);
 
-    const displayTrip = liveTrip || trip;
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
+    const { isConnected, sendMessage } = useSocket(`${wsUrl}/ws`, {
+        onMessage: (message) => {
+            if (!baseTrip) return;
+            if (message.event === "trip_completed" && typeof message.payload === "object" && message.payload) {
+                const payload = message.payload as Record<string, unknown>;
+                if (payload.tripId !== baseTrip.trip_id) return;
+                toast.success("Trip completed");
+                router.replace(`/trips/${baseTrip.trip_id}`);
+                return;
+            }
+            if (message.event === "rider_location_updated" && typeof message.payload === "object" && message.payload) {
+                const payload = message.payload as Record<string, unknown>;
+                if (payload.tripId !== baseTrip.trip_id) return;
+                const riderId = String(payload.userId || "");
+                const lat = Number(payload.lat);
+                const lng = Number(payload.lng);
+                if (!riderId || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                upsertLiveRiderPosition({
+                    riderId,
+                    lat,
+                    lng,
+                    status: String(payload.status || "online"),
+                });
+            }
+        },
+    });
+
+    useEffect(() => {
+        if (!isConnected || !baseTrip) return;
+        if (joinedTripRef.current === baseTrip.trip_id) return;
+
+        sendMessage("join_trip", { tripId: baseTrip.trip_id, role: "driver" });
+        joinedTripRef.current = baseTrip.trip_id;
+    }, [isConnected, baseTrip, sendMessage]);
+
+    useEffect(() => {
+        if (!isConnected) {
+            joinedTripRef.current = null;
+        }
+    }, [isConnected]);
+
+    useEffect(() => {
+        if (!isConnected || geoLat == null || geoLng == null || !baseTrip) return;
+
+        const sendCurrent = () => {
+            sendMessage("location_update", {
+                tripId: baseTrip.trip_id,
+                lat: geoLat,
+                lng: geoLng,
+                heading: geoHeading,
+                speedKmph: geoSpeed == null ? null : geoSpeed * 3.6,
+            });
+        };
+
+        sendCurrent();
+        const id = setInterval(sendCurrent, 3000);
+        return () => clearInterval(id);
+    }, [isConnected, geoLat, geoLng, geoHeading, geoSpeed, baseTrip, sendMessage]);
+
+    const displayTrip = liveTrip || baseTrip;
     const waitingCount = useMemo(() => riders.filter((r) => r.status === "waiting").length, [riders]);
     const onboardCount = useMemo(() => riders.filter((r) => r.status === "onboard").length, [riders]);
+    const completionDistanceMeters = useMemo(() => {
+        if (!driverPosition || !displayTrip) return null;
+        return distanceMeters(driverPosition.lat, driverPosition.lng, displayTrip.to_lat, displayTrip.to_lng);
+    }, [driverPosition, displayTrip]);
+    const canCompleteTrip = completionDistanceMeters != null && completionDistanceMeters <= 100;
     const updatedAtLabel = driverPosition?.lastUpdated
         ? new Date(driverPosition.lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "--:--";
 
-    const handleStatusUpdate = async (requestId: string, status: "onboard" | "dropedoff") => {
-        setIsUpdating(requestId);
+    const handleCompleteTrip = async () => {
+        if (!displayTrip) return;
+        setIsCompleting(true);
         try {
-            const result = status === "onboard"
-                ? await markRiderOnboardAction(requestId)
-                : await markRiderDroppedOffAction(requestId);
+            const result = await postGoApi(`/api/trips/${displayTrip.trip_id}/complete`);
             if (!result.success) {
                 toast.error(result.message);
                 return;
             }
             toast.success(result.message);
-            window.location.reload();
+            router.push(result.redirectTo || `/trips/${displayTrip.trip_id}`);
         } finally {
-            setIsUpdating(null);
+            setIsCompleting(false);
         }
     };
+
+    if (!displayTrip) {
+        return <main className="min-h-screen bg-slate-950" />;
+    }
 
     return (
         <div className="flex h-screen w-full flex-col overflow-hidden md:flex-row">
@@ -110,11 +198,11 @@ export default function LiveTripDriver({ trip }: LiveTripDriverProps) {
                     </div>
                     <div className="rounded-xl border border-white/5 bg-slate-900/50 px-3 py-2">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Completed</p>
-                        <p className="text-sm font-bold text-white">{formatDistance(completedDistanceKm)}</p>
+                        <p className="text-sm font-bold text-white">{formatDistanceKm(completedDistanceKm)}</p>
                     </div>
                     <div className="rounded-xl border border-white/5 bg-slate-900/50 px-3 py-2">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Remaining</p>
-                        <p className="text-sm font-bold text-white">{formatDistance(remainingDistanceKm)}</p>
+                        <p className="text-sm font-bold text-white">{formatDistanceKm(remainingDistanceKm)}</p>
                     </div>
                 </div>
 
@@ -124,7 +212,7 @@ export default function LiveTripDriver({ trip }: LiveTripDriverProps) {
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     <HiLocationMarker className="h-3 w-3 text-slate-400" />
-                    Driver {formatCoord(driverPosition?.lat)} , {formatCoord(driverPosition?.lng)}
+                    Driver {formatCoordinate(driverPosition?.lat)} , {formatCoordinate(driverPosition?.lng)}
                 </div>
 
                 <div className="mt-6 flex items-center justify-between">
@@ -135,6 +223,22 @@ export default function LiveTripDriver({ trip }: LiveTripDriverProps) {
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                         {waitingCount} waiting / {onboardCount} onboard
                     </span>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/5 bg-slate-900/40 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Trip Completion</p>
+                    <p className="mt-1 text-[11px] text-slate-300">
+                        {completionDistanceMeters == null
+                            ? "Waiting for driver location."
+                            : `${Math.round(completionDistanceMeters)}m from destination`}
+                    </p>
+                    <button
+                        onClick={handleCompleteTrip}
+                        disabled={!canCompleteTrip || isCompleting}
+                        className="mt-3 w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 enabled:hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        {isCompleting ? "Completing..." : "Complete Trip"}
+                    </button>
                 </div>
 
                 <div className="mt-3 space-y-3">
@@ -163,30 +267,13 @@ export default function LiveTripDriver({ trip }: LiveTripDriverProps) {
                                 <p className="truncate"><span className="font-bold text-slate-500">Pickup:</span> {rider.pickup_address}</p>
                                 <p className="truncate"><span className="font-bold text-slate-500">Drop:</span> {rider.drop_address}</p>
                                 <p className="text-[10px] font-bold text-slate-500">
-                                    Live {formatCoord(rider.current_lat)} , {formatCoord(rider.current_lng)}
+                                    Live {formatCoordinate(rider.current_lat)} , {formatCoordinate(rider.current_lng)}
                                 </p>
                             </div>
 
-                            <div className="mt-3 flex items-center gap-2">
-                                {rider.status === "waiting" && (
-                                    <button
-                                        onClick={() => handleStatusUpdate(rider.request_id, "onboard")}
-                                        disabled={isUpdating === rider.request_id}
-                                        className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:bg-indigo-500/20 disabled:opacity-50"
-                                    >
-                                        Onboard
-                                    </button>
-                                )}
-                                {rider.status === "onboard" && (
-                                    <button
-                                        onClick={() => handleStatusUpdate(rider.request_id, "dropedoff")}
-                                        disabled={isUpdating === rider.request_id}
-                                        className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
-                                    >
-                                        Drop Off
-                                    </button>
-                                )}
-                            </div>
+                            <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                Status is rider-controlled
+                            </p>
                         </div>
                     ))}
                 </div>

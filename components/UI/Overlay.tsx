@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUIStore } from "@/store/uiStore";
 
@@ -21,11 +21,7 @@ export default function Overlay({
     closeOnBackdropClick = true,
     zIndex = 9999
 }: OverlayProps) {
-    const [mounted, setMounted] = useState(false);
-
     useEffect(() => {
-        setMounted(true);
-
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === "Escape" && isOpen) {
                 onClose();
@@ -50,7 +46,7 @@ export default function Overlay({
         }
     }, [isOpen]);
 
-    if (!isOpen || !mounted) return null;
+    if (!isOpen) return null;
 
     const overlayContent = (
         <div

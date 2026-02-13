@@ -22,6 +22,7 @@ export interface TripRider {
     seats: number;
     total_fare: number;
     status: string;
+    rated_by_driver?: boolean;
 }
 
 export interface TripSearchResult {
@@ -69,7 +70,7 @@ export interface TripViewData {
     driver_id: string;
     vehicle_type: string;
     vehicle_number: string;
-    vehicle_info: any;
+    vehicle_info: Record<string, unknown> | null;
     driver_current_lat?: number | null;
     driver_current_lng?: number | null;
     driver_heading?: number | null;
@@ -90,6 +91,7 @@ export interface TripViewData {
         total_fare: number;
         pickup_address: string;
         drop_address: string;
+        rated_driver?: boolean;
     } | null;
     riders?: TripRider[];
 }
