@@ -11,6 +11,16 @@ import { TripSearchResult, TripLocation } from "@/store/types";
 import { useUserRidesStore } from "@/store/userRidesStore";
 import { useAuthStore } from "@/store/authStore";
 
+interface TripStopDisplay {
+    address?: string;
+    stop_address?: string;
+}
+
+interface TripRiderDisplay {
+    name?: string;
+    rider_name?: string;
+}
+
 interface TripInfoProps {
     selectedTrip: TripSearchResult | null;
     setSelectedTrip: (trip: TripSearchResult | null) => void;
@@ -39,6 +49,8 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
         stops = [],
         riders = []
     } = selectedTrip;
+    const displayStops = stops as TripStopDisplay[];
+    const displayRiders = riders as TripRiderDisplay[];
 
     const vehicleModel = vehicle_info?.model || vehicle_type;
     const vehicleColor = vehicle_info?.color || "";
@@ -73,7 +85,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
             } else {
                 toast.error(result.message || "Failed to send ride request");
             }
-        } catch (error) {
+        } catch {
             toast.error("An unexpected error occurred");
         } finally {
             setLoading(false);
@@ -134,11 +146,11 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
                                 </div>
                             </div>
 
-                            {stops && stops.map((stop: any, idx: number) => (
+                            {displayStops.map((stop, idx: number) => (
                                 <div key={idx} className="relative flex gap-4">
                                     <div className="w-1.5 h-1.5 rounded-full bg-slate-600 ring-4 ring-slate-900 shrink-0 mt-1.5 ml-0.5 z-10" />
                                     <div>
-                                        <p className="text-xs font-bold text-slate-300">{stop.address}</p>
+                                        <p className="text-xs font-bold text-slate-300">{stop.address || stop.stop_address || "Stop"}</p>
                                         <p className="text-[10px] text-slate-600 mt-0.5">Stop {idx + 1}</p>
                                     </div>
                                 </div>
@@ -158,13 +170,13 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
                         <div className="p-5 border-b border-white/5">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">On Board ({riders.length})</h3>
                             <div className="grid grid-cols-2 gap-2">
-                                {riders.map((rider: any, idx: number) => (
+                                {displayRiders.map((rider, idx: number) => (
                                     <div key={idx} className="bg-white/5 rounded-lg p-2.5 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400">
-                                            {rider.name.charAt(0)}
+                                            {(rider.name || rider.rider_name || "R").charAt(0)}
                                         </div>
                                         <div className="overflow-hidden">
-                                            <p className="text-xs font-bold text-slate-200 truncate">{rider.name}</p>
+                                            <p className="text-xs font-bold text-slate-200 truncate">{rider.name || rider.rider_name || "Rider"}</p>
                                             <p className="text-[9px] text-slate-500">Passenger</p>
                                         </div>
                                     </div>

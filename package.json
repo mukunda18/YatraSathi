@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-all.ps1",
     "build": "next build",
+    "build:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-all.ps1",
+    "backend:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
     "start": "next start",
+    "start:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-all.ps1",
     "lint": "eslint"
   },
   "dependencies": {

@@ -57,7 +57,7 @@ export default function UserRidesList() {
                 </div>
             ) : (
                 <div className="h-[32vh] overflow-y-auto pr-2 modern-scrollbar space-y-2">
-                    {trips.map((trip: any) => (
+                    {trips.map((trip) => (
                         <Link
                             key={trip.request_id}
                             href={`/trips/${trip.trip_id}`}

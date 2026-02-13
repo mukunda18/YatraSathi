@@ -37,7 +37,7 @@ export const useUserRidesStore = create<UserRidesStore>((set) => ({
         try {
             const result = await getJoinedTripsAction();
             if (result.success) {
-                set({ trips: result.trips || [], lastFetched: Date.now() });
+                set({ trips: (result.trips || []) as UserTrip[], lastFetched: Date.now() });
             }
         } catch (error) {
             console.error("Failed to fetch user trips:", error);

@@ -5,7 +5,7 @@ import { signupAction } from "@/app/actions/authActions";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
-import { HiUser, HiMail, HiPhone, HiLockClosed, HiEye, HiEyeOff, HiIdentification, HiTruck, HiTag } from "react-icons/hi";
+import { HiUser, HiMail, HiPhone, HiLockClosed, HiEye, HiEyeOff } from "react-icons/hi";
 import Input from "@/components/UI/Input";
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card";
@@ -19,24 +19,29 @@ export default function SignupForm() {
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const connecting = useAuthStore((state) => state.connecting);
+    const setConnecting = useAuthStore((state) => state.setConnecting);
+    const setAuthError = useAuthStore((state) => state.setError);
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        useAuthStore.setState({ connecting: true });
+        setAuthError(null);
+        setConnecting(true);
 
         const result = await signupAction({
             name, email, password, phone
         });
 
         if (result.success && result.user) {
-            useAuthStore.setState({ ...result.user, connecting: false });
+            useAuthStore.setState({ ...result.user, connecting: false, error: null });
             toast.success(`Welcome, ${result.user.name}!`);
             router.push("/");
         } else {
             setErrors(result.errors || {});
-            toast.error(result.message || "Failed to create account");
-            useAuthStore.setState({ connecting: false });
+            const message = result.message || "Failed to create account";
+            setAuthError(message);
+            toast.error(message);
+            setConnecting(false);
         }
     };
 

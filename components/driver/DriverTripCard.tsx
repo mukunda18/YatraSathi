@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cancelTripAction, markRiderDroppedOffAction, markRiderOnboardAction, startTripAction } from "@/app/actions/driverActions";
+import { cancelTripAction } from "@/app/actions/driverActions";
 import { cancelBookingAction } from "@/app/actions/tripActions";
 import { HiX, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import Overlay from "../UI/Overlay";
 import Card from "../UI/Card";
 
 import Link from "next/link";
+import { postGoApi } from "@/utils/goApiClient";
 
 interface DriverTripRequest {
     request_id?: string;
@@ -80,7 +81,7 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
     const handleStartTrip = async () => {
         setIsLoading(true);
         try {
-            const result = await startTripAction(trip.trip_id);
+            const result = await postGoApi(`/api/trips/${trip.trip_id}/start`);
             if (result.success) {
                 toast.success(result.message);
                 window.location.href = "/driver/live";
@@ -226,40 +227,6 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                         )}
 
                                         <div className="flex items-center gap-2">
-                                            {request.status === "waiting" && trip.trip_status === "ongoing" && (
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!requestId) return;
-                                                        const result = await markRiderOnboardAction(requestId);
-                                                        if (result.success) {
-                                                            toast.success(result.message);
-                                                            onUpdate();
-                                                            return;
-                                                        }
-                                                        toast.error(result.message);
-                                                    }}
-                                                    className="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
-                                                >
-                                                    Onboard
-                                                </button>
-                                            )}
-                                            {request.status === "onboard" && (
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!requestId) return;
-                                                        const result = await markRiderDroppedOffAction(requestId);
-                                                        if (result.success) {
-                                                            toast.success(result.message);
-                                                            onUpdate();
-                                                            return;
-                                                        }
-                                                        toast.error(result.message);
-                                                    }}
-                                                    className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
-                                                >
-                                                    Drop Off
-                                                </button>
-                                            )}
                                             {request.status === "waiting" && trip.trip_status === "scheduled" && (
                                                 <button
                                                     onClick={() => {

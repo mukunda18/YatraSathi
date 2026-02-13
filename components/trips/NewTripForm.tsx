@@ -150,13 +150,14 @@ export default function NewTripForm() {
     const isFromVerified = !!(from && fromAddress && from.address.trim() === fromAddress.trim());
     const isToVerified = !!(to && toAddress && to.address.trim() === toAddress.trim());
     const areStopsVerified = stops.every(stop => stop.lat !== 0 && stop.lng !== 0 && stop.address);
-    const isReady = isFromVerified && isToVerified && areStopsVerified && fare && seats;
+    const hasRoute = Array.isArray(routeGeometry) && routeGeometry.length > 1;
+    const isReady = isFromVerified && isToVerified && areStopsVerified && hasRoute && fare && seats;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!isReady) {
-            toast.error("Please verify all locations and fill all required fields.");
+            toast.error("Please verify all locations, generate route, and fill all required fields.");
             return;
         }
 
@@ -188,7 +189,7 @@ export default function NewTripForm() {
             } else {
                 toast.error(result.message || "Failed to create trip");
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred. Please try again.");
         } finally {
             setLoading(false);

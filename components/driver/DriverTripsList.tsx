@@ -22,7 +22,7 @@ export default function DriverTripsList() {
         scheduled: trips.filter(t => t.trip_status === "scheduled").length,
         completed: trips.filter(t => t.trip_status === "completed").length,
         cancelled: trips.filter(t => t.trip_status === "cancelled").length,
-        pendingRequests: trips.reduce((acc, t) => acc + t.ride_requests.filter((r: any) => r.status === "waiting").length, 0)
+        pendingRequests: trips.reduce((acc, t) => acc + t.ride_requests.filter((r) => r.status === "waiting").length, 0)
     };
 
     return (
@@ -78,7 +78,7 @@ export default function DriverTripsList() {
             ) : filteredTrips.length === 0 ? (
                 <div className="text-center py-12 bg-slate-900/30 border border-white/5 rounded-2xl">
                     <p className="text-sm text-slate-500 mb-4">
-                        You haven't created any trips yet
+                        You haven&apos;t created any trips yet
                     </p>
                     <Link
                         href="/trips/new"

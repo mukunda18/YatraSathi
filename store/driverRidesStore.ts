@@ -46,7 +46,7 @@ export const useDriverRidesStore = create<DriverRidesStore>((set) => ({
         try {
             const result = await getDriverTripsAction();
             if (result.success) {
-                set({ trips: result.trips || [], lastFetched: Date.now() });
+                set({ trips: (result.trips || []) as DriverTrip[], lastFetched: Date.now() });
             }
         } catch (error) {
             console.error("Failed to fetch driver trips:", error);

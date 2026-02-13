@@ -1,122 +1,45 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-type Message struct {
-	Event   string          `json:"event"`
-	Payload json.RawMessage `json:"payload"`
-}
-
-func verifyToken(r *http.Request) (string, error) {
-	tokenString := ""
-	cookie, err := r.Cookie("yatrasathi")
-
-	if err == nil {
-		tokenString = cookie.Value
-	} else {
-		tokenString = r.URL.Query().Get("token")
-	}
-
-	if tokenString == "" {
-		return "", fmt.Errorf("no security token provided")
-	}
-
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
-		_, ok := t.Method.(*jwt.SigningMethodHMAC)
-		if !ok {
-			return nil, fmt.Errorf("wrong signing method: %v", t.Header["alg"])
-		}
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("failed to verify token: %v", err)
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if ok && token.Valid {
-		userId := fmt.Sprintf("%v", claims["userId"])
-		return userId, nil
-	}
-
-	return "", fmt.Errorf("token is invalid")
-}
-
-func reader(conn *websocket.Conn) {
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
-			break
-		}
-
-		var msg Message
-		if err := json.Unmarshal(p, &msg); err != nil {
-			log.Printf("error decoding json: %v", err)
-			continue
-		}
-
-		log.Printf("Received Event: %s, Payload: %s\n", msg.Event, string(msg.Payload))
-
-		response, _ := json.Marshal(msg)
-		if err := conn.WriteMessage(messageType, response); err != nil {
-			log.Println(err)
-			return
-		}
-	}
-}
-
-func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	userId, err := verifyToken(r)
-	if err != nil {
-		log.Printf("Auth failed: %v", err)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	log.Printf("User %s Connected\n", userId)
-	reader(ws)
-}
-
-func setupRoutes() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to the Yatra Backend!")
-	})
-	http.HandleFunc("/ws", wsEndpoint)
-}
-
 func main() {
-	err := godotenv.Load("../.env.local")
-	if err != nil {
-		log.Println("Warning: Could not load .env.local file, using system env vars")
+	if err := godotenv.Load("../.env.local"); err != nil {
+		log.Println("Warning: could not load ../.env.local, using system env vars")
 	}
 
-	fmt.Println("Starting Yatra Backend on :8080...")
+	// Validate required environment variables
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+
+	var err error
+	dbPool, err = pgxpool.New(context.Background(), databaseURL)
+	if err != nil {
+		log.Fatalf("failed to connect database: %v", err)
+	}
+	defer dbPool.Close()
+
+	// Verify database connection is working
+	if err := dbPool.Ping(context.Background()); err != nil {
+		log.Fatalf("failed to verify database connection: %v", err)
+	}
+	log.Println("Database connection verified")
+
 	setupRoutes()
+	log.Println("Starting Yatra Backend on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

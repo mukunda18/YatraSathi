@@ -1,7 +1,17 @@
 "use server";
 
-import { createTrip, createRideRequest, getJoinedTripsByRiderId, getLiveTripViewById, getTripViewById, getOwnedTrip, cancelTripById, removeRiderFromTrip } from "@/db/db";
+import {
+    canUserAccessLiveTrip,
+    createTrip,
+    createRideRequest,
+    getJoinedTripsByRiderId,
+    getTripViewById,
+    rateDriverByRider,
+    rateRiderByDriver,
+    removeRiderFromTrip
+} from "@/db/db";
 import { TripViewData } from "@/store/types";
+import { splitRouteGeometry } from "@/utils/tripParsers";
 import { validateTrip } from "@/utils/validation";
 import { getAuthenticatedUserId, getAuthenticatedDriver } from "./authHelpers";
 
@@ -27,6 +37,10 @@ export async function createTripAction(data: {
 
     const fromPoint = `POINT(${data.from_location.lng} ${data.from_location.lat})`;
     const toPoint = `POINT(${data.to_location.lng} ${data.to_location.lat})`;
+
+    if (!data.route || data.route.length < 2) {
+        return { success: false, message: "Route is required to create a trip" };
+    }
 
     const trip = await createTrip({
         driver_id: driver!.id,
@@ -113,7 +127,10 @@ export async function getTripViewAction(tripId: string) {
         return { success: false, message: "Trip not found", trip: null };
     }
 
-    const { route_geometry, rest } = parseTripRouteGeometry(trip, "getTripViewAction");
+    const { route_geometry, rest } = splitRouteGeometry(trip, "getTripViewAction");
+    if (!route_geometry || route_geometry.length < 2) {
+        return { success: false, message: "Trip route is unavailable", trip: null };
+    }
 
     return {
         success: true,
@@ -123,47 +140,6 @@ export async function getTripViewAction(tripId: string) {
         } as TripViewData
     };
 }
-
-export async function getLiveTripViewAction(tripId: string) {
-    const { userId } = await getAuthenticatedUserId();
-
-    const trip = await getLiveTripViewById(tripId, userId || undefined);
-
-    if (!trip) {
-        return { success: false, message: "Trip not found", trip: null };
-    }
-
-    const { route_geometry, rest } = parseTripRouteGeometry(trip, "getLiveTripViewAction");
-
-    return {
-        success: true,
-        trip: {
-            ...rest,
-            route_geometry
-        } as TripViewData
-    };
-}
-
-function parseTripRouteGeometry(
-    trip: Record<string, unknown>,
-    source: string
-): { route_geometry: [number, number][] | null; rest: Record<string, unknown> } {
-    let route_geometry: [number, number][] | null = null;
-    if (typeof trip.route_geojson === "string") {
-        try {
-            const geojson = JSON.parse(trip.route_geojson);
-            if (geojson.type === "LineString" && Array.isArray(geojson.coordinates)) {
-                route_geometry = geojson.coordinates;
-            }
-        } catch (e) {
-            console.error(`Error parsing GeoJSON in ${source}`, e);
-        }
-    }
-
-    const { route_geojson, ...rest } = trip;
-    return { route_geometry, rest };
-}
-
 
 export async function cancelBookingAction(requestId: string, reason?: string) {
     const { userId, error } = await getAuthenticatedUserId();
@@ -176,4 +152,39 @@ export async function cancelBookingAction(requestId: string, reason?: string) {
     }
 
     return { success: false, message: "Failed to cancel booking. You may not be authorized." };
+}
+
+export async function validateTripLivePageAction(tripId: string) {
+    if (!tripId) return false;
+
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error || !userId) {
+        return false;
+    }
+
+    return await canUserAccessLiveTrip(tripId, userId);
+}
+
+export async function rateDriverForCompletedTripAction(requestId: string, rating: number, comment?: string) {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error || !userId) return error || { success: false, message: "Unauthorized" };
+
+    const result = await rateDriverByRider(requestId, userId, rating, comment);
+    if (!result.success) {
+        return { success: false, message: result.message || "Failed to submit rating." };
+    }
+
+    return { success: true, message: "Driver rated successfully." };
+}
+
+export async function rateRiderForCompletedTripAction(requestId: string, rating: number, comment?: string) {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error || !userId) return error || { success: false, message: "Unauthorized" };
+
+    const result = await rateRiderByDriver(requestId, userId, rating, comment);
+    if (!result.success) {
+        return { success: false, message: result.message || "Failed to submit rating." };
+    }
+
+    return { success: true, message: "Rider rated successfully." };
 }

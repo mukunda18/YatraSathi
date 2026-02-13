@@ -7,6 +7,11 @@ import { setCookie } from "@/utils/cookie";
 import bcrypt from "bcrypt";
 import { validateSignup, validateLogin, validateDriverRegistration } from "@/utils/validation";
 
+// Validate JWT_SECRET is set on module load
+if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET environment variable is required");
+}
+
 export async function onLogout() {
     await setCookie("", 0);
     return { success: true };
@@ -39,7 +44,7 @@ export async function validateSession(): Promise<SafeUser | null> {
             phone: user.phone,
             isDriver: user.is_driver
         };
-    } catch (error) {
+    } catch {
         return null;
     }
 }
@@ -53,11 +58,30 @@ export async function getUserId(): Promise<string | null> {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
         return decoded.userId;
-    } catch (error) {
+    } catch {
         return null;
     }
 }
-export async function signupAction(data: any) {
+
+interface SignupPayload {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+}
+
+interface DriverRegistrationPayload {
+    licenseNumber: string;
+    vehicleType: string;
+    vehicleNumber: string;
+}
+
+interface LoginPayload {
+    email: string;
+    password: string;
+}
+
+export async function signupAction(data: SignupPayload) {
     const { name, email, password, phone } = data;
 
     const validation = validateSignup(data);
@@ -80,7 +104,7 @@ export async function signupAction(data: any) {
     };
 }
 
-export async function registerDriverAction(data: any) {
+export async function registerDriverAction(data: DriverRegistrationPayload) {
     const cookieStore = await cookies();
     const token = cookieStore.get("yatrasathi")?.value;
 
@@ -110,12 +134,12 @@ export async function registerDriverAction(data: any) {
         await updateUserById(decoded.userId, { is_driver: true });
 
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, message: "Failed to verify session" };
     }
 }
 
-export async function loginAction(data: any) {
+export async function loginAction(data: LoginPayload) {
     const { email, password } = data;
 
     const validation = validateLogin(data);

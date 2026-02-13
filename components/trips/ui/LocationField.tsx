@@ -17,6 +17,12 @@ interface LocationFieldProps {
     context: SearchFormContext | CreationFormContext;
 }
 
+interface NominatimSuggestion {
+    lat: string;
+    lon: string;
+    display_name: string;
+}
+
 export default function LocationField({
     mode,
     type,
@@ -36,7 +42,7 @@ export default function LocationField({
     const stops = mode === "plan" ? (context as CreationFormContext).stops : [];
     const updateStop = mode === "plan" ? (context as CreationFormContext).updateStop : () => { };
 
-    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const { latitude, longitude, error: locationError } = useLocationStore();
@@ -45,7 +51,7 @@ export default function LocationField({
     const [inputValue, setInputValue] = useState(storeDraft);
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const debounceTimer = useRef<NodeJS.Timeout>(null);
+    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const isStop = type !== "from" && type !== "to";
     const stop = isStop ? stops.find(s => s.id === type) : null;
@@ -78,6 +84,14 @@ export default function LocationField({
         };
     }, [isActive, setActiveField]);
 
+    const setActive = (value: string | null) => {
+        if (mode === "search") {
+            (context as SearchFormContext).setActiveField(value === "from" || value === "to" ? value : null);
+            return;
+        }
+        (context as CreationFormContext).setActiveField(value);
+    };
+
     const fetchSuggestions = async (query: string) => {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
@@ -95,15 +109,19 @@ export default function LocationField({
                 const res = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&viewbox=${viewbox}&bounded=0&countrycodes=np`
                 );
-                const data = await res.json();
-                setSuggestions(data);
-            } catch (error) {
-                console.error("Geocoding error:", error);
+                const data: unknown = await res.json();
+                if (Array.isArray(data)) {
+                    setSuggestions(data as NominatimSuggestion[]);
+                    return;
+                }
+                setSuggestions([]);
+            } catch {
+                setSuggestions([]);
             }
         }, 500);
     };
 
-    const handleSelectSuggestion = (suggestion: any) => {
+    const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
         const loc: TripLocation = {
             lat: parseFloat(suggestion.lat),
             lng: parseFloat(suggestion.lon),
@@ -120,7 +138,7 @@ export default function LocationField({
         }
         setInputValue(suggestion.display_name);
         setShowDropdown(false);
-        setActiveField(null);
+        setActive(null);
     };
 
     const handleUseCurrentLocation = async () => {
@@ -141,7 +159,7 @@ export default function LocationField({
             setInputValue("Locating...");
 
             setShowDropdown(false);
-            setActiveField(null);
+            setActive(null);
 
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.lat}&lon=${loc.lng}`);
@@ -158,7 +176,7 @@ export default function LocationField({
                     updateStop(type, tripLoc);
                 }
                 setInputValue(address);
-            } catch (error) {
+            } catch {
                 const address = `Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`;
                 const tripLoc = { ...loc, address };
                 if (type === "from") {
@@ -183,7 +201,7 @@ export default function LocationField({
 
     const handleFocus = () => {
         setShowDropdown(true);
-        setActiveField(type as any);
+        setActive(type);
         if (!currentPosition && latitude && longitude) {
             setCurrentPosition({ lat: latitude, lng: longitude });
         }
@@ -207,7 +225,9 @@ export default function LocationField({
 
     const isVerified = isStop
         ? !!(stop && stop.lat !== 0 && stop.lng !== 0)
-        : !!((context as any)[type as "from" | "to"] && ((context as any)[type as "from" | "to"] as any).lat !== 0 && ((context as any)[type as "from" | "to"] as any).lng !== 0);
+        : type === "from"
+            ? !!(from && from.lat !== 0 && from.lng !== 0)
+            : !!(to && to.lat !== 0 && to.lng !== 0);
 
     return (
         <div className={`relative group/field ${(showDropdown && suggestions.length > 0) || isActive ? 'z-50' : 'z-0'}`} ref={containerRef}>
@@ -228,7 +248,7 @@ export default function LocationField({
                     )}
                     <button
                         type="button"
-                        onClick={() => setActiveField(type as any)}
+                        onClick={() => setActive(type)}
                         className={`flex items-center gap-1 text-[8px] font-black uppercase tracking-widest transition-all py-1 px-2 rounded-lg ${isActive ? `bg-${colorClass}-500 text-white shadow-lg shadow-${colorClass}-500/20` : `bg-white/5 ${iconColor} opacity-60 hover:opacity-100 hover:bg-white/10`}`}
                     >
                         <HiSearch className="w-2.5 h-2.5" /> {isActive ? 'Picking...' : 'Map'}

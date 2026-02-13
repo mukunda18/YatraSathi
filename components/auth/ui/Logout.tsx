@@ -23,7 +23,7 @@ export default function Logout() {
             clearAuth();
             toast.success("Logged out successfully", { id: toastId });
             router.push("/login");
-        } catch (error) {
+        } catch {
             toast.error("Logout failed", { id: toastId });
         } finally {
             setIsLoading(false);

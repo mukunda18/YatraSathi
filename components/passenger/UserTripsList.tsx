@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useUserRidesStore, UserTrip } from "@/store/userRidesStore";
 import UserTripCard from "./UserTripCard";
 import Link from "next/link";
-import { HiPlusCircle, HiRefresh, HiLocationMarker, HiArrowRight } from "react-icons/hi";
+import { HiPlusCircle, HiRefresh } from "react-icons/hi";
 
 export default function UserTripsList() {
     const { trips, isLoading, lastFetched, fetchTrips } = useUserRidesStore();
@@ -76,7 +76,7 @@ export default function UserTripsList() {
             ) : trips.length === 0 ? (
                 <div className="text-center py-12 bg-slate-900/30 border border-white/5 rounded-2xl">
                     <p className="text-sm text-slate-500 mb-4">
-                        You haven't joined any trips yet
+                        You haven&apos;t joined any trips yet
                     </p>
                     <Link
                         href="/trips/join"
