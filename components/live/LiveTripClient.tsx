@@ -67,7 +67,10 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
         return baseTrip.driver_user_id === viewerUserId;
     }, [baseTrip, viewerUserId]);
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsUrl) {
+        throw new Error("NEXT_PUBLIC_WS_URL environment variable is required");
+    }
     const { isConnected, sendMessage } = useSocket(`${wsUrl}/ws`, {
         onMessage: (message) => {
             if (!baseTrip) return;
