@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -24,6 +25,10 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is required")
+	}
+
+	if strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN")) == "" {
+		log.Fatal("FRONTEND_ORIGIN is required")
 	}
 
 	var err error

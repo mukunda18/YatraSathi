@@ -130,9 +130,10 @@ func requestsAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCORS(w http.ResponseWriter, r *http.Request) bool {
-	allowedOrigin := os.Getenv("FRONTEND_ORIGIN")
+	allowedOrigin := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
 	if allowedOrigin == "" {
-		allowedOrigin = "http://localhost:3000"
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "FRONTEND_ORIGIN not configured"})
+		return false
 	}
 	origin := strings.TrimSpace(r.Header.Get("Origin"))
 	if origin != "" {

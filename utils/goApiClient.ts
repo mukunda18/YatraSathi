@@ -8,7 +8,12 @@ export type GoApiJSONResult<T> = GoApiResult & {
     trip?: T | null;
 };
 
-const getGoBackendUrl = () => process.env.NEXT_PUBLIC_GO_BACKEND_URL || "http://localhost:8080";
+const goBackendUrl = process.env.NEXT_PUBLIC_GO_BACKEND_URL;
+if (!goBackendUrl) {
+    throw new Error("NEXT_PUBLIC_GO_BACKEND_URL environment variable is required");
+}
+
+const getGoBackendUrl = () => goBackendUrl;
 
 export async function postGoApi(path: string): Promise<GoApiResult> {
     try {

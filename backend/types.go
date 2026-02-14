@@ -160,7 +160,7 @@ var upgrader = websocket.Upgrader{
 
 		allowed := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
 		if allowed == "" {
-			allowed = "http://localhost:3000"
+			return false
 		}
 
 		originURL, err := url.Parse(origin)
