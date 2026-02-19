@@ -24,22 +24,33 @@ export default function TripResultCard({ trip, isSelected, onClick, from, to }: 
     const handleBook = async (e: React.MouseEvent) => {
         e.stopPropagation();
 
-        if (!from || !to) {
-            toast.error("Pickup and destination locations are required");
-            return;
-        }
-
         setLoading(true);
         try {
             const pickupPoint = parseWKT(trip.pickup_route_point);
             const dropPoint = parseWKT(trip.drop_route_point);
 
+            // Determine locations: prioritize verified search points, fallback to trip defaults
+            const startLoc = parseWKT(trip.from_loc) || pickupPoint;
+            const endLoc = parseWKT(trip.to_loc) || dropPoint;
+
+            const finalPickupLoc = from ? { lat: from.lat, lng: from.lng } : (pickupPoint || startLoc);
+            const finalDropLoc = to ? { lat: to.lat, lng: to.lng } : (dropPoint || endLoc);
+            const finalPickupAddr = from?.address || trip.from_address;
+            const finalDropAddr = to?.address || trip.to_address;
+
+            if (!finalPickupLoc || !finalDropLoc) {
+                console.error("Missing locations in Card:", { from, to, pickupPoint, dropPoint, startLoc, endLoc });
+                toast.error("Pickup and destination locations are required to book.");
+                setLoading(false);
+                return;
+            }
+
             const result = await createRideRequestAction({
                 trip_id: trip.id,
-                pickup_location: pickupPoint || { lat: from.lat, lng: from.lng },
-                pickup_address: from.address,
-                drop_location: dropPoint || { lat: to.lat, lng: to.lng },
-                drop_address: to.address,
+                pickup_location: finalPickupLoc,
+                pickup_address: finalPickupAddr,
+                drop_location: finalDropLoc,
+                drop_address: finalDropAddr,
                 seats: 1,
                 total_fare: trip.fare_per_seat
             });
@@ -47,11 +58,12 @@ export default function TripResultCard({ trip, isSelected, onClick, from, to }: 
             if (result.success) {
                 toast.success("Ride request sent successfully!");
                 useUserRidesStore.getState().fetchTrips();
-                router.push("/dashboard");
+                // We stay on the page to allow the user to continue browsing/exploring
             } else {
                 toast.error(result.message || "Failed to send ride request");
             }
-        } catch {
+        } catch (error) {
+            console.error("Book error:", error);
             toast.error("An unexpected error occurred");
         } finally {
             setLoading(false);

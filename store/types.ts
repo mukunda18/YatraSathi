@@ -47,6 +47,8 @@ export interface TripSearchResult {
     riders?: TripRider[];
     pickup_route_point?: string;
     drop_route_point?: string;
+    from_loc?: string; // WKT
+    to_loc?: string;   // WKT
 }
 
 export interface TripViewData {
