@@ -8,7 +8,8 @@ import {
     getTripViewById,
     rateDriverByRider,
     rateRiderByDriver,
-    removeRiderFromTrip
+    removeRiderFromTrip,
+    getAllUpcomingTrips
 } from "@/db/db";
 import { TripViewData } from "@/store/types";
 import { splitRouteGeometry } from "@/utils/tripParsers";
@@ -188,3 +189,37 @@ export async function rateRiderForCompletedTripAction(requestId: string, rating:
 
     return { success: true, message: "Rider rated successfully." };
 }
+
+export interface ExploreTrip {
+    id: string;
+    from_address: string;
+    to_address: string;
+    travel_date: string;
+    fare_per_seat: number;
+    total_seats: number;
+    available_seats: number;
+    description: string | null;
+    status: string;
+    from_lat: number;
+    from_lng: number;
+    to_lat: number;
+    to_lng: number;
+    driver_user_id: string;
+    driver_name: string;
+    driver_rating: number;
+    driver_total_ratings: number;
+    vehicle_type: string;
+    vehicle_number: string;
+    vehicle_info: Record<string, unknown> | null;
+}
+
+export async function getAllUpcomingTripsAction(): Promise<{ success: boolean; trips: ExploreTrip[]; message?: string }> {
+    try {
+        const rows = await getAllUpcomingTrips();
+        const trips = rows as unknown as ExploreTrip[];
+        return { success: true, trips };
+    } catch {
+        return { success: false, trips: [], message: "Failed to fetch trips" };
+    }
+}
+

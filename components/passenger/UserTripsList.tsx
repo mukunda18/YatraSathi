@@ -58,7 +58,7 @@ export default function UserTripsList() {
                         <HiRefresh className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
                     </button>
                     <Link
-                        href="/trips/join"
+                        href="/explore"
                         prefetch={true}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-colors"
                     >
