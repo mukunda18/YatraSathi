@@ -1008,3 +1008,30 @@ export const getAllUpcomingTrips = async (): Promise<Record<string, unknown>[]> 
     }
 };
 
+export const createPasswordResetToken = async (
+    userId: string,
+    token: string,
+    expiresAt: Date
+): Promise<void> => {
+    // Delete any existing tokens for this user first
+    await query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
+    await query(
+        "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+        [userId, token, expiresAt]
+    );
+};
+
+export const getPasswordResetToken = async (
+    token: string
+): Promise<{ user_id: string; expires_at: Date } | null> => {
+    const res = await query(
+        "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = $1",
+        [token]
+    );
+    if (res.rows.length === 0) return null;
+    return res.rows[0] as { user_id: string; expires_at: Date };
+};
+
+export const deletePasswordResetToken = async (token: string): Promise<void> => {
+    await query("DELETE FROM password_reset_tokens WHERE token = $1", [token]);
+};
