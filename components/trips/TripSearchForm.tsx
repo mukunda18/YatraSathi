@@ -5,7 +5,8 @@ import TripMap from "../map/TripMap";
 import { searchTripsAction } from "@/app/actions/searchActions";
 import { toast } from "sonner";
 import Card from "@/components/UI/Card";
-import { HiSearch, HiLocationMarker } from "react-icons/hi";
+import { HiSearch, HiLocationMarker, HiArrowLeft } from "react-icons/hi";
+import Link from "next/link";
 import LocationField from "./ui/LocationField";
 import TripResultCard from "./ui/TripResultCard";
 import TripInfo from "./ui/TripInfo";
@@ -130,6 +131,14 @@ export default function TripSearchForm() {
 
     return (
         <div className="relative w-full h-full overflow-hidden">
+            {/* Back button */}
+            <Link
+                href="/"
+                className="absolute top-8 right-8 z-20 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all font-bold text-xs uppercase tracking-widest group shadow-lg"
+            >
+                <HiArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                Back
+            </Link>
             <TripMap
                 mode="search"
                 from={from}
