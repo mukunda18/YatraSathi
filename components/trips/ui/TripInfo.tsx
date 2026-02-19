@@ -57,22 +57,36 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
     const isOwnTrip = selectedTrip.driver_user_id === userId;
 
     const handleJoin = async () => {
-        if (!selectedTrip || !from || !to) {
-            toast.error("Pickup and destination locations are required");
-            return;
-        }
+        if (!selectedTrip) return;
 
         setLoading(true);
         try {
             const pickupPoint = parseWKT(selectedTrip.pickup_route_point);
             const dropPoint = parseWKT(selectedTrip.drop_route_point);
 
+            // Determine locations: prioritize verified search points, fallback to trip defaults
+            // We explicitly extract coords to ensure we have a plain object with lat/lng
+            const startLoc = parseWKT(selectedTrip.from_loc) || pickupPoint;
+            const endLoc = parseWKT(selectedTrip.to_loc) || dropPoint;
+
+            const finalPickupLoc = from ? { lat: from.lat, lng: from.lng } : (pickupPoint || startLoc);
+            const finalDropLoc = to ? { lat: to.lat, lng: to.lng } : (dropPoint || endLoc);
+            const finalPickupAddr = from?.address || selectedTrip.from_address;
+            const finalDropAddr = to?.address || selectedTrip.to_address;
+
+            if (!finalPickupLoc || !finalDropLoc) {
+                console.error("Missing locations:", { from, to, pickupPoint, dropPoint, startLoc, endLoc });
+                toast.error("Pickup and destination locations are required to book.");
+                setLoading(false);
+                return;
+            }
+
             const result = await createRideRequestAction({
                 trip_id: selectedTrip.id,
-                pickup_location: pickupPoint || { lat: from.lat, lng: from.lng },
-                pickup_address: from.address,
-                drop_location: dropPoint || { lat: to.lat, lng: to.lng },
-                drop_address: to.address,
+                pickup_location: finalPickupLoc,
+                pickup_address: finalPickupAddr,
+                drop_location: finalDropLoc,
+                drop_address: finalDropAddr,
                 seats: seats,
                 total_fare: selectedTrip.fare_per_seat * seats
             });
@@ -80,12 +94,13 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
             if (result.success) {
                 toast.success("Ride request sent successfully!");
                 useUserRidesStore.getState().fetchTrips();
+                // Clear the detail view/selection so the user can see other search results
                 setSelectedTrip(null);
-                router.push("/trips");
             } else {
                 toast.error(result.message || "Failed to send ride request");
             }
-        } catch {
+        } catch (error) {
+            console.error("Join error:", error);
             toast.error("An unexpected error occurred");
         } finally {
             setLoading(false);
