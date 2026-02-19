@@ -405,7 +405,7 @@ export const createRideRequest = async (data: {
         await client.query('BEGIN');
 
         const tripSql = `
-            SELECT t.available_seats, t.status, d.user_id as driver_user_id 
+            SELECT t.available_seats, t.status, d.user_id as driver_user_id, t.route_id
             FROM trips t
             JOIN drivers d ON t.driver_id = d.id
             WHERE t.id = $1 
@@ -418,7 +418,22 @@ export const createRideRequest = async (data: {
             return { success: false, message: 'Trip not found' };
         }
 
-        const { available_seats, status: tripStatus, driver_user_id } = tripRes.rows[0];
+        const { available_seats, status: tripStatus, driver_user_id, route_id } = tripRes.rows[0];
+
+        const routeValidationSql = `
+            SELECT 1 FROM routes r
+            WHERE r.id = $1
+            AND ST_Intersects(r.buffer_100, ST_GeogFromText($2))
+            AND ST_Intersects(r.buffer_100, ST_GeogFromText($3))
+            AND ST_LineLocatePoint(r.geom::geometry, ST_GeomFromText($2, 4326)) < ST_LineLocatePoint(r.geom::geometry, ST_GeomFromText($3, 4326))
+            LIMIT 1
+        `;
+        const routeValidationRes = await client.query(routeValidationSql, [route_id, data.pickup_location, data.drop_location]);
+
+        if ((routeValidationRes.rowCount ?? 0) === 0) {
+            await client.query('ROLLBACK');
+            return { success: false, message: 'Pickup and dropoff locations must be on the trip route' };
+        }
 
         if (tripStatus !== "scheduled") {
             await client.query('ROLLBACK');

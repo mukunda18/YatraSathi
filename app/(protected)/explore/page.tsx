@@ -33,18 +33,16 @@ function formatDate(dateStr: string) {
     });
 }
 
-// ── Trip Card ──────────────────────────────────────────────────────────────────
 function TripCard({ trip, onClick }: { trip: ExploreTrip; onClick: () => void }) {
     return (
         <button
             onClick={onClick}
             className="group w-full text-left bg-slate-900/60 hover:bg-slate-900/90 border border-white/5 hover:border-indigo-500/30 rounded-3xl p-5 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/5 active:scale-[0.99] flex flex-col gap-4"
         >
-            {/* Route */}
             <div className="flex items-start gap-3">
-                <div className="flex flex-col items-center gap-1 pt-0.5 flex-shrink-0">
+                <div className="flex flex-col items-center gap-1 pt-0.5 shrink-0">
                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-indigo-500/10" />
-                    <div className="w-px h-7 bg-gradient-to-b from-indigo-500/50 to-emerald-500/50" />
+                    <div className="w-px h-7 bg-linear-to-b from-indigo-500/50 to-emerald-500/50" />
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/10" />
                 </div>
                 <div className="flex-1 min-w-0 space-y-2">
@@ -57,29 +55,28 @@ function TripCard({ trip, onClick }: { trip: ExploreTrip; onClick: () => void })
                         <p className="text-sm font-bold text-white leading-snug line-clamp-1">{trip.to_address}</p>
                     </div>
                 </div>
-                <HiArrowNarrowRight className="w-5 h-5 text-slate-700 group-hover:text-indigo-400 transition-colors mt-3 flex-shrink-0" />
+                <HiArrowNarrowRight className="w-5 h-5 text-slate-700 group-hover:text-indigo-400 transition-colors mt-3 shrink-0" />
             </div>
 
             <div className="border-t border-white/5" />
 
-            {/* Meta */}
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-1.5 text-slate-400">
-                    <HiClock className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                    <HiClock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                     <span className="text-[11px] font-bold truncate">{formatDate(trip.travel_date)}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-400">
-                    <HiCurrencyRupee className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                    <HiCurrencyRupee className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="text-[11px] font-bold text-emerald-400">
                         {trip.fare_per_seat} <span className="text-slate-500 font-medium">/seat</span>
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-400">
-                    <HiUser className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                    <HiUser className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                     <span className="text-[11px] font-bold truncate">{trip.driver_name}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-400">
-                    <HiLocationMarker className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                    <HiLocationMarker className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <span className="text-[11px] font-bold">
                         {trip.available_seats}
                         <span className="text-slate-600">/{trip.total_seats}</span>{" "}
@@ -88,7 +85,6 @@ function TripCard({ trip, onClick }: { trip: ExploreTrip; onClick: () => void })
                 </div>
             </div>
 
-            {/* Tags */}
             <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-1 rounded-xl bg-indigo-500/10 border border-indigo-500/10 text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1">
                     <HiTruck className="w-3 h-3" />
@@ -142,15 +138,13 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
     };
 
     return (
-        // Backdrop
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
             <div className="w-full max-w-md bg-slate-950 border border-white/10 rounded-3xl shadow-2xl shadow-black/60 animate-in zoom-in-95 duration-200 overflow-hidden">
 
-                {/* Header */}
-                <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center gap-4 relative">
+                <div className="p-6 border-b border-white/5 bg-white/2 flex items-center gap-4 relative">
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-full transition-all"
@@ -158,7 +152,7 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
                         <HiX className="w-5 h-5" />
                     </button>
 
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/30 flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/30 shrink-0">
                         {trip.driver_name.charAt(0)}
                     </div>
                     <div>
@@ -172,7 +166,6 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
                 </div>
 
                 <div className="p-6 space-y-5">
-                    {/* Vehicle */}
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Vehicle</p>
                         <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between">
@@ -187,11 +180,10 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
                         </div>
                     </div>
 
-                    {/* Route */}
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Trip Route</p>
                         <div className="relative pl-4 space-y-4">
-                            <div className="absolute left-[21px] top-2 bottom-2 w-px bg-gradient-to-b from-indigo-500/50 to-emerald-500/50" />
+                            <div className="absolute left-5.25op-2 bottom-2 w-px bgbg-linear-to-brom-indigo-500/50 to-emerald-500/50" />
                             <div className="relative flex gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-indigo-500/10 shrink-0 mt-1 z-10" />
                                 <div>
@@ -209,7 +201,6 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
                         </div>
                     </div>
 
-                    {/* Seats & Fare */}
                     <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
@@ -247,7 +238,6 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
                         </div>
                     </div>
 
-                    {/* Join Button */}
                     <button
                         onClick={handleJoin}
                         disabled={loading || trip.available_seats === 0 || isOwnTrip}
@@ -270,7 +260,6 @@ function JoinModal({ trip, onClose }: { trip: ExploreTrip; onClose: () => void }
     );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ExplorePage() {
     const [trips, setTrips] = useState<ExploreTrip[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -311,16 +300,14 @@ export default function ExplorePage() {
 
     return (
         <main className="min-h-screen bg-slate-950 relative overflow-hidden">
-            <div className="absolute top-0 right-0 h-[600px] w-full max-w-[800px] bg-indigo-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 h-[400px] w-full max-w-[600px] bg-purple-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
+            <div className="absolute top-0 right-0 h-150 w-full max-w-200 bg-indigo-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 h-100 w-full max-w-150 bg-purple-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
-            {/* Join Modal */}
             {selectedTrip && (
                 <JoinModal trip={selectedTrip} onClose={() => setSelectedTrip(null)} />
             )}
 
             <div className="max-w-6xl mx-auto px-6 py-16">
-                {/* Header */}
                 <header className="mb-10">
                     <div className="flex items-end justify-between gap-4 mb-2">
                         <div>
@@ -343,7 +330,6 @@ export default function ExplorePage() {
                     </div>
                 </header>
 
-                {/* Search & Filter */}
                 <div className="bg-slate-900/60 border border-white/5 rounded-3xl p-5 mb-8 space-y-4">
                     <div className="flex items-center gap-2 text-slate-500 mb-1">
                         <HiSearch className="w-4 h-4" />
@@ -409,7 +395,6 @@ export default function ExplorePage() {
                     )}
                 </div>
 
-                {/* Count */}
                 {!isLoading && !error && (
                     <div className="mb-6 flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">
@@ -421,7 +406,6 @@ export default function ExplorePage() {
                     </div>
                 )}
 
-                {/* Grid */}
                 {isLoading ? (
                     <div className="text-center py-24 bg-slate-900/20 border border-dashed border-white/5 rounded-3xl">
                         <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />

@@ -19,8 +19,8 @@ export default async function MyTripsPage() {
 
     return (
         <main className="min-h-screen bg-slate-950 relative overflow-hidden">
-            <div className="absolute top-0 right-0 h-[600px] w-full max-w-[800px] bg-indigo-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 h-[400px] w-full max-w-[600px] bg-purple-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
+            <div className="absolute top-0 right-0 h-150 w-full max-w-200 bg-indigo-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 h-100 w-full max-w-150 bg-purple-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
             <div className="max-w-5xl mx-auto px-6 py-16">
                 <header className="mb-10">
