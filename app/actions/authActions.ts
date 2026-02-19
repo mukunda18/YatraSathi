@@ -2,10 +2,12 @@
 
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { getUserById, getUserByEmail, createUser, createDriver, updateUserById } from "@/db/db";
+import { getUserById, getUserByEmail, createUser, createDriver, updateUserById, createPasswordResetToken, getPasswordResetToken, deletePasswordResetToken } from "@/db/db";
 import { setCookie } from "@/utils/cookie";
 import bcrypt from "bcrypt";
 import { validateSignup, validateLogin, validateDriverRegistration } from "@/utils/validation";
+import crypto from "crypto";
+import { sendPasswordResetEmail } from "@/lib/mailer";
 
 // Validate JWT_SECRET is set on module load
 if (!process.env.JWT_SECRET) {
@@ -157,4 +159,65 @@ export async function loginAction(data: LoginPayload) {
         success: true,
         user: { id: profile.id, name: profile.name, email: profile.email, phone: profile.phone, isDriver: profile.is_driver }
     };
+}
+
+export async function forgotPasswordAction(email: string) {
+    if (!email || !email.includes("@")) {
+        return { success: false, message: "Please enter a valid email address." };
+    }
+
+    try {
+        const user = await getUserByEmail(email.toLowerCase().trim());
+
+        // Always return success to prevent email enumeration attacks
+        if (!user) {
+            return { success: true, message: "If that email exists, you'll receive a reset link shortly." };
+        }
+
+        const token = crypto.randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        await createPasswordResetToken(user.id, token, expiresAt);
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const resetUrl = `${appUrl}/reset-password?token=${token}`;
+
+        await sendPasswordResetEmail(user.email, user.name, resetUrl);
+
+        return { success: true, message: "If that email exists, you'll receive a reset link shortly." };
+    } catch (error) {
+        console.error("Error in forgotPasswordAction:", error);
+        return { success: false, message: "Something went wrong. Please try again." };
+    }
+}
+
+export async function resetPasswordAction(token: string, newPassword: string) {
+    if (!token) return { success: false, message: "Invalid or missing reset token." };
+    if (!newPassword || newPassword.length < 8) {
+        return { success: false, message: "Password must be at least 8 characters." };
+    }
+
+    try {
+        const record = await getPasswordResetToken(token);
+
+        if (!record) {
+            return { success: false, message: "This link is invalid or has already been used." };
+        }
+
+        if (new Date(record.expires_at) < new Date()) {
+            await deletePasswordResetToken(token);
+            return { success: false, message: "This link has expired. Please request a new one." };
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(newPassword, salt);
+
+        await updateUserById(record.user_id, { password_hash: hash });
+        await deletePasswordResetToken(token);
+
+        return { success: true, message: "Password reset successfully. You can now log in." };
+    } catch (error) {
+        console.error("Error in resetPasswordAction:", error);
+        return { success: false, message: "Something went wrong. Please try again." };
+    }
 }

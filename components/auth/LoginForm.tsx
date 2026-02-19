@@ -9,6 +9,7 @@ import { HiMail, HiLockClosed, HiEye, HiEyeOff } from "react-icons/hi";
 import Input from "@/components/UI/Input";
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card";
+import Link from "next/link";
 
 export default function LoginForm() {
     const [email, setEmail] = useState("");
@@ -70,9 +71,9 @@ export default function LoginForm() {
                         }
                     />
                     <div className="text-right">
-                        <button type="button" className="text-xs font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
+                        <Link href="/forgot-password" className="text-xs font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
                             Forgot Password?
-                        </button>
+                        </Link>
                     </div>
                 </div>
 
