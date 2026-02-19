@@ -953,3 +953,43 @@ export const rateRiderByDriver = async (requestId: string, driverUserId: string,
     return submitTripRating(requestId, driverUserId, rating, "driver_to_rider", comment);
 };
 
+export const getAllUpcomingTrips = async (): Promise<Record<string, unknown>[]> => {
+    const sql = `
+        SELECT
+            t.id,
+            t.from_address,
+            t.to_address,
+            t.travel_date,
+            t.fare_per_seat,
+            t.total_seats,
+            t.available_seats,
+            t.description,
+            t.status,
+            ST_Y(t.from_location::geometry) as from_lat,
+            ST_X(t.from_location::geometry) as from_lng,
+            ST_Y(t.to_location::geometry) as to_lat,
+            ST_X(t.to_location::geometry) as to_lng,
+            u.id as driver_user_id,
+            u.name as driver_name,
+            d.avg_rating as driver_rating,
+            d.total_ratings as driver_total_ratings,
+            d.vehicle_type,
+            d.vehicle_number,
+            d.vehicle_info
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        JOIN users u ON d.user_id = u.id
+        WHERE t.status = 'scheduled'
+          AND t.available_seats > 0
+          AND t.travel_date > now()
+        ORDER BY t.travel_date ASC;
+    `;
+    try {
+        const res = await query(sql);
+        return res.rows;
+    } catch (error) {
+        console.error('Error fetching all upcoming trips:', error);
+        return [];
+    }
+};
+
