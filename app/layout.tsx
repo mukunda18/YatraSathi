@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from "sonner";
 import LocationWatcher from "@/components/location/LocationWatcher";
+import ChatBot from "@/components/ChatBot";
 
 export default function RootLayout({
   children,
@@ -20,6 +21,7 @@ export default function RootLayout({
         <Toaster position="top-center" richColors theme="dark" />
         <LocationWatcher />
         {children}
+        <ChatBot />
       </body>
     </html>
   );

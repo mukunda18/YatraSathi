@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { HiArrowLeft } from "react-icons/hi";
 import DriverTripsList from "@/components/driver/DriverTripsList";
+import ChatBotInline from "@/components/ChatBotInline";
 
 export const metadata = {
     title: "Driver Dashboard | YatraSathi",
@@ -43,6 +44,10 @@ export default async function DriverDashboardPage() {
                 <Suspense fallback={<div className="text-center py-12"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" /><p className="text-sm text-slate-500">Loading dashboard...</p></div>}>
                     <DriverTripsList />
                 </Suspense>
+
+                <div className="mt-10">
+                    <ChatBotInline />
+                </div>
             </div>
         </main>
     );

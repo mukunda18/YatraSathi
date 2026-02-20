@@ -41,7 +41,7 @@ export default async function MyTripsPage() {
                     <UserTripsList />
                 </Suspense>
 
-                <div className="mt-12 flex justify-center">
+                <div className="mt-8 flex justify-center">
                     <Link href="/" className="inline-flex items-center px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
                         <HiArrowLeft className="mr-2 w-4 h-4" />
                         Back to Home
