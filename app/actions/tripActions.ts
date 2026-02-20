@@ -4,7 +4,7 @@ import {
     canUserAccessLiveTrip,
     createTrip,
     createRideRequest,
-    getTripJoinDefaultsById,
+    createRideRequestFromTripDefaults,
     getJoinedTripsByRiderId,
     getTripViewById,
     rateDriverByRider,
@@ -81,24 +81,10 @@ export async function createRideRequestFromTripAction(data: {
         return { success: false, message: "Must book at least 1 seat" };
     }
 
-    const defaults = await getTripJoinDefaultsById(data.trip_id);
-    if (!defaults) {
-        return { success: false, message: "Trip not found" };
-    }
-
-    const pickupPoint = `POINT(${defaults.from_lng} ${defaults.from_lat})`;
-    const dropPoint = `POINT(${defaults.to_lng} ${defaults.to_lat})`;
-    const totalFare = defaults.fare_per_seat * data.seats;
-
-    const result = await createRideRequest({
+    const result = await createRideRequestFromTripDefaults({
         rider_id: userId!,
         trip_id: data.trip_id,
-        pickup_location: pickupPoint,
-        pickup_address: defaults.from_address,
-        drop_location: dropPoint,
-        drop_address: defaults.to_address,
-        seats: data.seats,
-        total_fare: totalFare
+        seats: data.seats
     });
 
     if (!result.success) {

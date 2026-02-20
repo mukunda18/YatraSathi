@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { getUserById, getUserByEmail, createUser, createDriver, updateUserById, createPasswordResetToken, getPasswordResetToken, deletePasswordResetToken } from "@/db/db";
+import { getUserById, getUserByEmail, createUser, createDriverAndMarkUser, updateUserById, createPasswordResetToken, getPasswordResetToken, deletePasswordResetToken } from "@/db/db";
 import { setCookie } from "@/utils/cookie";
 import bcrypt from "bcrypt";
 import { validateSignup, validateLogin, validateDriverRegistration } from "@/utils/validation";
@@ -121,7 +121,7 @@ export async function registerDriverAction(data: DriverRegistrationPayload) {
             return { success: false, errors: validation.errors };
         }
 
-        const driverProfile = await createDriver({
+        const driverProfile = await createDriverAndMarkUser({
             user_id: decoded.userId,
             license_number: licenseNumber,
             vehicle_type: vehicleType,
@@ -131,9 +131,6 @@ export async function registerDriverAction(data: DriverRegistrationPayload) {
         if (!driverProfile) {
             return { success: false, message: "Failed to create driver profile" };
         }
-
-        // Also update the user record
-        await updateUserById(decoded.userId, { is_driver: true });
 
         return { success: true };
     } catch {

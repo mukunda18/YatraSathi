@@ -210,7 +210,7 @@ export const updateUserById = async (id: string, data: {
     }
 };
 
-export const createDriver = async (data: {
+export const createDriverAndMarkUser = async (data: {
     user_id: string;
     vehicle_number: string;
     vehicle_type: string;
@@ -218,9 +218,20 @@ export const createDriver = async (data: {
     vehicle_info?: Record<string, unknown> | null;
 }): Promise<Driver | undefined> => {
     const sql = `
-        INSERT INTO drivers (user_id, vehicle_number, vehicle_type, license_number, vehicle_info)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING *;
+        WITH inserted_driver AS (
+            INSERT INTO drivers (user_id, vehicle_number, vehicle_type, license_number, vehicle_info)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        ),
+        updated_user AS (
+            UPDATE users
+            SET is_driver = true, updated_at = now()
+            WHERE id = $1
+            RETURNING id
+        )
+        SELECT inserted_driver.*
+        FROM inserted_driver
+        JOIN updated_user ON true;
     `;
     try {
         const res = await query(sql, [
@@ -232,7 +243,7 @@ export const createDriver = async (data: {
         ]);
         return res.rows[0];
     } catch (error) {
-        console.error('Error creating driver:', error);
+        console.error('Error creating driver and updating user:', error);
         return;
     }
 };
@@ -312,13 +323,19 @@ export const createTrip = async (data: {
         const trip = tripRes.rows[0];
 
         if (data.stops && data.stops.length > 0) {
-            for (const stop of data.stops) {
-                const stopSql = `
-                    INSERT INTO trip_stops (trip_id, stop_location, stop_address, stop_order)
-                    VALUES ($1, ST_GeogFromText($2), $3, $4);
-                `;
-                await client.query(stopSql, [trip.id, stop.location, stop.address, stop.order]);
-            }
+            const stopLocations = data.stops.map((stop) => stop.location);
+            const stopAddresses = data.stops.map((stop) => stop.address);
+            const stopOrders = data.stops.map((stop) => stop.order);
+            const stopSql = `
+                INSERT INTO trip_stops (trip_id, stop_location, stop_address, stop_order)
+                SELECT
+                    $1,
+                    ST_GeogFromText(stops.stop_location),
+                    stops.stop_address,
+                    stops.stop_order
+                FROM unnest($2::text[], $3::text[], $4::int[]) AS stops(stop_location, stop_address, stop_order);
+            `;
+            await client.query(stopSql, [trip.id, stopLocations, stopAddresses, stopOrders]);
         }
 
         await client.query('COMMIT');
@@ -390,6 +407,168 @@ export const searchTrips = async (from_location: string, to_location: string): P
     }
 };
 
+type RideRequestFailureCode =
+    | "trip_not_found"
+    | "trip_not_scheduled"
+    | "own_trip"
+    | "not_enough_seats"
+    | "route_mismatch"
+    | "duplicate_request";
+
+const toRideRequestErrorMessage = (code?: RideRequestFailureCode | null): string => {
+    switch (code) {
+        case "trip_not_found":
+            return "Trip not found";
+        case "trip_not_scheduled":
+            return "Only scheduled trips can be joined";
+        case "own_trip":
+            return "You cannot join your own trip.";
+        case "not_enough_seats":
+            return "Not enough seats available";
+        case "route_mismatch":
+            return "Pickup and dropoff locations must be on the trip route";
+        case "duplicate_request":
+            return "You already have a request for this trip.";
+        default:
+            return "Failed to create ride request.";
+    }
+};
+
+const createRideRequestAtomic = async (data: {
+    rider_id: string;
+    trip_id: string;
+    seats: number;
+    pickup_location?: string | null;
+    pickup_address?: string | null;
+    drop_location?: string | null;
+    drop_address?: string | null;
+    total_fare?: number | null;
+}): Promise<{ success: boolean; message?: string; request?: RideRequest }> => {
+    const sql = `
+        WITH trip_data AS (
+            SELECT
+                t.id AS trip_id,
+                t.route_id,
+                t.status AS trip_status,
+                t.available_seats,
+                t.fare_per_seat,
+                t.from_location,
+                t.from_address,
+                t.to_location,
+                t.to_address,
+                d.user_id AS driver_user_id
+            FROM trips t
+            JOIN drivers d ON t.driver_id = d.id
+            WHERE t.id = $2
+            FOR UPDATE OF t
+        ),
+        ride_input AS (
+            SELECT
+                td.trip_id,
+                td.route_id,
+                td.trip_status,
+                td.available_seats,
+                td.driver_user_id,
+                COALESCE(ST_GeogFromText($4), td.from_location) AS pickup_location,
+                COALESCE(NULLIF($5, ''), td.from_address) AS pickup_address,
+                COALESCE(ST_GeogFromText($6), td.to_location) AS drop_location,
+                COALESCE(NULLIF($7, ''), td.to_address) AS drop_address,
+                COALESCE($8::numeric, td.fare_per_seat * $3::numeric) AS total_fare
+            FROM trip_data td
+        ),
+        decision AS (
+            SELECT
+                CASE
+                    WHEN NOT EXISTS (SELECT 1 FROM trip_data) THEN 'trip_not_found'
+                    WHEN EXISTS (SELECT 1 FROM ride_input ri WHERE ri.trip_status <> 'scheduled') THEN 'trip_not_scheduled'
+                    WHEN EXISTS (SELECT 1 FROM ride_input ri WHERE ri.driver_user_id = $1) THEN 'own_trip'
+                    WHEN EXISTS (SELECT 1 FROM ride_input ri WHERE ri.available_seats < $3) THEN 'not_enough_seats'
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM ride_input ri
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM routes r
+                            WHERE r.id = ri.route_id
+                              AND ST_Intersects(r.buffer_100, ri.pickup_location)
+                              AND ST_Intersects(r.buffer_100, ri.drop_location)
+                              AND ST_LineLocatePoint(r.geom::geometry, ri.pickup_location::geometry) <
+                                  ST_LineLocatePoint(r.geom::geometry, ri.drop_location::geometry)
+                        )
+                    ) THEN 'route_mismatch'
+                    ELSE NULL
+                END AS failure
+        ),
+        inserted AS (
+            INSERT INTO ride_requests (
+                rider_id, trip_id, pickup_location, pickup_address,
+                drop_location, drop_address, seats, total_fare, status
+            )
+            SELECT
+                $1,
+                ri.trip_id,
+                ri.pickup_location,
+                ri.pickup_address,
+                ri.drop_location,
+                ri.drop_address,
+                $3,
+                ri.total_fare,
+                'waiting'
+            FROM ride_input ri
+            CROSS JOIN decision d
+            WHERE d.failure IS NULL
+            ON CONFLICT (rider_id, trip_id) DO NOTHING
+            RETURNING
+                id, rider_id, trip_id,
+                ST_AsText(pickup_location) AS pickup_location, pickup_address,
+                ST_AsText(drop_location) AS drop_location, drop_address,
+                seats, total_fare, status, created_at, updated_at
+        ),
+        updated_trip AS (
+            UPDATE trips t
+            SET available_seats = t.available_seats - $3,
+                updated_at = now()
+            FROM inserted i
+            WHERE t.id = i.trip_id
+            RETURNING t.id
+        ),
+        update_guard AS (
+            SELECT COUNT(*) AS updated_rows
+            FROM updated_trip
+        )
+        SELECT
+            COALESCE(
+                (SELECT d.failure FROM decision d),
+                CASE WHEN EXISTS (SELECT 1 FROM inserted) THEN NULL ELSE 'duplicate_request' END
+            ) AS failure,
+            i.*
+        FROM (SELECT 1) AS anchor
+        CROSS JOIN update_guard
+        LEFT JOIN inserted i ON true;
+    `;
+
+    try {
+        const res = await query(sql, [
+            data.rider_id,
+            data.trip_id,
+            data.seats,
+            data.pickup_location ?? null,
+            data.pickup_address ?? null,
+            data.drop_location ?? null,
+            data.drop_address ?? null,
+            data.total_fare ?? null
+        ]);
+        const row = res.rows[0] as (RideRequest & { failure?: RideRequestFailureCode | null }) | undefined;
+        if (!row || row.failure || !row.id) {
+            return { success: false, message: toRideRequestErrorMessage(row?.failure) };
+        }
+        return { success: true, request: row };
+    } catch (error) {
+        console.error("Error creating ride request:", error);
+        return { success: false, message: "Failed to create ride request." };
+    }
+};
+
 export const createRideRequest = async (data: {
     rider_id: string;
     trip_id: string;
@@ -400,151 +579,20 @@ export const createRideRequest = async (data: {
     seats: number;
     total_fare: number;
 }): Promise<{ success: boolean; message?: string; request?: RideRequest }> => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
-        const tripSql = `
-            SELECT t.available_seats, t.status, d.user_id as driver_user_id, t.route_id
-            FROM trips t
-            JOIN drivers d ON t.driver_id = d.id
-            WHERE t.id = $1 
-            FOR UPDATE OF t
-        `;
-        const tripRes = await client.query(tripSql, [data.trip_id]);
-
-        if (tripRes.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return { success: false, message: 'Trip not found' };
-        }
-
-        const { available_seats, status: tripStatus, driver_user_id, route_id } = tripRes.rows[0];
-
-        const routeValidationSql = `
-            SELECT 1 FROM routes r
-            WHERE r.id = $1
-            AND ST_Intersects(r.buffer_100, ST_GeogFromText($2))
-            AND ST_Intersects(r.buffer_100, ST_GeogFromText($3))
-            AND ST_LineLocatePoint(r.geom::geometry, ST_GeomFromText($2, 4326)) < ST_LineLocatePoint(r.geom::geometry, ST_GeomFromText($3, 4326))
-            LIMIT 1
-        `;
-        const routeValidationRes = await client.query(routeValidationSql, [route_id, data.pickup_location, data.drop_location]);
-
-        if ((routeValidationRes.rowCount ?? 0) === 0) {
-            await client.query('ROLLBACK');
-            return { success: false, message: 'Pickup and dropoff locations must be on the trip route' };
-        }
-
-        if (tripStatus !== "scheduled") {
-            await client.query('ROLLBACK');
-            return { success: false, message: 'Only scheduled trips can be joined' };
-        }
-
-        if (driver_user_id === data.rider_id) {
-            await client.query('ROLLBACK');
-            return { success: false, message: 'You cannot join your own trip.' };
-        }
-
-        if (available_seats < data.seats) {
-            await client.query('ROLLBACK');
-            return { success: false, message: 'Not enough seats available' };
-        }
-
-        const existingRequestRes = await client.query(
-            `SELECT 1 FROM ride_requests WHERE rider_id = $1 AND trip_id = $2 LIMIT 1`,
-            [data.rider_id, data.trip_id]
-        );
-        if ((existingRequestRes.rowCount ?? 0) > 0) {
-            await client.query('ROLLBACK');
-            return { success: false, message: 'You already have a request for this trip.' };
-        }
-
-        const sql = `
-            INSERT INTO ride_requests (
-                rider_id, trip_id, pickup_location, pickup_address,
-                drop_location, drop_address, seats, total_fare, status
-            )
-            VALUES ($1, $2, ST_GeogFromText($3), $4, ST_GeogFromText($5), $6, $7, $8, 'waiting')
-            RETURNING 
-                id, rider_id, trip_id,
-                ST_AsText(pickup_location) as pickup_location, pickup_address,
-                ST_AsText(drop_location) as drop_location, drop_address,
-                seats, total_fare, status, created_at, updated_at;
-        `;
-        const res = await client.query(sql, [
-            data.rider_id,
-            data.trip_id,
-            data.pickup_location,
-            data.pickup_address,
-            data.drop_location,
-            data.drop_address,
-            data.seats,
-            data.total_fare
-        ]);
-
-        const updateTripSql = `UPDATE trips SET available_seats = available_seats - $1 WHERE id = $2`;
-        await client.query(updateTripSql, [data.seats, data.trip_id]);
-
-        await client.query('COMMIT');
-        return { success: true, request: res.rows[0] };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error creating ride request:', error);
-        return { success: false, message: 'Failed to create ride request. You might already have a request for this trip.' };
-    } finally {
-        client.release();
-    }
+    return createRideRequestAtomic(data);
 };
 
-export const getTripJoinDefaultsById = async (trip_id: string): Promise<{
-    from_lat: number;
-    from_lng: number;
-    to_lat: number;
-    to_lng: number;
-    from_address: string;
-    to_address: string;
-    fare_per_seat: number;
-} | null> => {
-    const sql = `
-        SELECT
-            ST_Y(t.from_location::geometry) as from_lat,
-            ST_X(t.from_location::geometry) as from_lng,
-            ST_Y(t.to_location::geometry) as to_lat,
-            ST_X(t.to_location::geometry) as to_lng,
-            t.from_address,
-            t.to_address,
-            t.fare_per_seat
-        FROM trips t
-        WHERE t.id = $1
-        LIMIT 1;
-    `;
-    try {
-        const res = await query(sql, [trip_id]);
-        if ((res.rowCount ?? 0) === 0) return null;
-        const row = res.rows[0] as {
-            from_lat: number;
-            from_lng: number;
-            to_lat: number;
-            to_lng: number;
-            from_address: string;
-            to_address: string;
-            fare_per_seat: string | number;
-        };
-        return {
-            from_lat: row.from_lat,
-            from_lng: row.from_lng,
-            to_lat: row.to_lat,
-            to_lng: row.to_lng,
-            from_address: row.from_address,
-            to_address: row.to_address,
-            fare_per_seat: Number(row.fare_per_seat),
-        };
-    } catch (error) {
-        console.error("Error getting trip join defaults:", error);
-        return null;
-    }
+export const createRideRequestFromTripDefaults = async (data: {
+    rider_id: string;
+    trip_id: string;
+    seats: number;
+}): Promise<{ success: boolean; message?: string; request?: RideRequest }> => {
+    return createRideRequestAtomic({
+        rider_id: data.rider_id,
+        trip_id: data.trip_id,
+        seats: data.seats
+    });
 };
-
 
 export const getJoinedTripsByRiderId = async (rider_id: string): Promise<Record<string, unknown>[]> => {
     const sql = `
@@ -712,12 +760,6 @@ export const canUserAccessLiveTrip = async (trip_id: string, user_id: string): P
     }
 };
 
-const updateTripAvailableSeats = async (client: PoolClient, trip_id: string, seatDelta: number): Promise<void> => {
-    const sql = `UPDATE trips SET available_seats = available_seats + $1, updated_at = now() WHERE id = $2`;
-    await client.query(sql, [seatDelta, trip_id]);
-};
-
-
 export const getDriverTripsWithRequests = async (driver_id: string): Promise<Record<string, unknown>[]> => {
     const sql = `
 SELECT
@@ -756,127 +798,84 @@ t.id as trip_id, t.from_address, t.to_address, t.travel_date,
 };
 
 export const cancelTripById = async (trip_id: string, reason?: string, driver_id?: string): Promise<boolean> => {
-    const client = await pool.connect();
     const cancellationReason = reason?.trim() || "Trip cancelled";
     try {
-        await client.query('BEGIN');
-
-        let tripSql = `
-            UPDATE trips
-            SET status = 'cancelled',
-                cancelled_at = now(),
-                cancelled_reason = $2,
-                available_seats = total_seats,
-                updated_at = now()
-            WHERE id = $1 AND status = 'scheduled'
+        const sql = `
+            WITH cancelled_trip AS (
+                UPDATE trips
+                SET status = 'cancelled',
+                    cancelled_at = now(),
+                    cancelled_reason = $2,
+                    available_seats = total_seats,
+                    updated_at = now()
+                WHERE id = $1
+                  AND status = 'scheduled'
+                  AND ($3::uuid IS NULL OR driver_id = $3::uuid)
+                RETURNING id
+            ),
+            cancelled_requests AS (
+                UPDATE ride_requests rr
+                SET status = 'cancelled',
+                    cancelled_at = now(),
+                    cancelled_reason = $2,
+                    updated_at = now()
+                WHERE rr.trip_id IN (SELECT id FROM cancelled_trip)
+                  AND rr.status IN ('waiting', 'onboard')
+                RETURNING rr.id
+            )
+            SELECT EXISTS (SELECT 1 FROM cancelled_trip) AS success;
         `;
-        const params: unknown[] = [trip_id, cancellationReason];
-
-        if (driver_id) {
-            tripSql += ` AND driver_id = $3`;
-            params.push(driver_id);
-        }
-        tripSql += ` RETURNING id`;
-
-        const tripRes = await client.query(tripSql, params);
-        if ((tripRes.rowCount ?? 0) === 0) {
-            await client.query('ROLLBACK');
-            return false;
-        }
-
-        await client.query(
-            `
-            UPDATE ride_requests
-            SET status = 'cancelled',
-                cancelled_at = now(),
-                cancelled_reason = $2,
-                updated_at = now()
-            WHERE trip_id = $1
-              AND status IN ('waiting', 'onboard')
-            `,
-            [trip_id, cancellationReason]
-        );
-
-        await client.query('COMMIT');
-        return true;
+        const res = await query(sql, [trip_id, cancellationReason, driver_id ?? null]);
+        return Boolean(res.rows[0]?.success);
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('Error cancelling trip:', error);
         return false;
-    } finally {
-        client.release();
     }
 };
 
 export const removeRiderFromTrip = async (request_id: string, requesting_user_id?: string, reason?: string): Promise<boolean> => {
-    const client = await pool.connect();
+    if (!requesting_user_id) {
+        console.error("Unauthorized cancellation attempt");
+        return false;
+    }
+
+    const cancellationReason = reason?.trim() || "Cancelled by user";
+    if (reason) {
+        console.info("Ride request cancelled:", { request_id, reason: cancellationReason });
+    }
+
     try {
-        await client.query('BEGIN');
-
-        const getSql = `
-            SELECT rr.seats, rr.trip_id, rr.status, rr.rider_id, t.driver_id, d.user_id as driver_user_id
-            FROM ride_requests rr
-            JOIN trips t ON rr.trip_id = t.id
-            JOIN drivers d ON t.driver_id = d.id
-            WHERE rr.id = $1
+        const sql = `
+            WITH cancelled_request AS (
+                UPDATE ride_requests rr
+                SET status = 'cancelled',
+                    cancelled_at = now(),
+                    cancelled_reason = $3,
+                    updated_at = now()
+                FROM trips t
+                JOIN drivers d ON t.driver_id = d.id
+                WHERE rr.id = $1
+                  AND rr.trip_id = t.id
+                  AND rr.status = 'waiting'
+                  AND t.status = 'scheduled'
+                  AND ($2::uuid = rr.rider_id OR $2::uuid = d.user_id)
+                RETURNING rr.trip_id, rr.seats
+            ),
+            updated_trip AS (
+                UPDATE trips t
+                SET available_seats = t.available_seats + cr.seats,
+                    updated_at = now()
+                FROM cancelled_request cr
+                WHERE t.id = cr.trip_id
+                RETURNING t.id
+            )
+            SELECT EXISTS (SELECT 1 FROM updated_trip) AS success;
         `;
-        const getRes = await client.query(getSql, [request_id]);
-
-        if (getRes.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return false;
-        }
-
-        const { seats, trip_id, status, rider_id, driver_user_id } = getRes.rows[0];
-
-        if (!requesting_user_id || (requesting_user_id !== rider_id && requesting_user_id !== driver_user_id)) {
-            await client.query('ROLLBACK');
-            console.error("Unauthorized cancellation attempt");
-            return false;
-        }
-
-        if (status !== "waiting") {
-            await client.query('ROLLBACK');
-            return false;
-        }
-
-        const tripStatusRes = await client.query(
-            `SELECT status FROM trips WHERE id = $1 LIMIT 1`,
-            [trip_id]
-        );
-        const tripStatus = tripStatusRes.rows[0]?.status;
-        if (tripStatus !== "scheduled") {
-            await client.query('ROLLBACK');
-            return false;
-        }
-
-        const cancellationReason = reason?.trim() || "Cancelled by user";
-        if (reason) {
-            console.info("Ride request cancelled:", { request_id, reason: cancellationReason });
-        }
-
-        await client.query(
-            `
-            UPDATE ride_requests
-            SET status = 'cancelled',
-                cancelled_at = now(),
-                cancelled_reason = $2,
-                updated_at = now()
-            WHERE id = $1
-            `,
-            [request_id, cancellationReason]
-        );
-
-        await updateTripAvailableSeats(client, trip_id, seats);
-
-        await client.query('COMMIT');
-        return true;
+        const res = await query(sql, [request_id, requesting_user_id, cancellationReason]);
+        return Boolean(res.rows[0]?.success);
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('Error cancelling ride request:', error);
         return false;
-    } finally {
-        client.release();
     }
 };
 
@@ -1062,10 +1061,15 @@ export const createPasswordResetToken = async (
     token: string,
     expiresAt: Date
 ): Promise<void> => {
-    // Delete any existing tokens for this user first
-    await query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
     await query(
-        "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+        `
+        WITH deleted AS (
+            DELETE FROM password_reset_tokens
+            WHERE user_id = $1
+        )
+        INSERT INTO password_reset_tokens (user_id, token, expires_at)
+        VALUES ($1, $2, $3);
+        `,
         [userId, token, expiresAt]
     );
 };
