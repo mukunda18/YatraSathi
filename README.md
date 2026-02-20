@@ -708,12 +708,10 @@ The `backend/.env` file configures the **Go WebSocket server**. It must share th
 
 **यात्रासाथी · YatraSathi**
 
-*Built with ❤️ as a DBMS Project*
-
 **Bikesh Sah · Mukunda Chaudhary · Pramish Marasini**
 
 *Department of Electronics and Engineering*
-*Thapathali Campus*
+          *Thapathali Campus*
 
 🌐 **[yatra-sathi-black.vercel.app](https://yatra-sathi-black.vercel.app/)**
 
