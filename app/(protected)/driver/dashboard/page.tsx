@@ -27,16 +27,16 @@ export default async function DriverDashboardPage() {
             <div className="absolute top-0 right-0 h-[600px] w-full max-w-[800px] bg-purple-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
 
             <div className="max-w-5xl mx-auto px-6 py-12">
-                <Link href="/" className="mb-8 inline-flex items-center px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                <Link href="/" className="mb-6 md:mb-8 inline-flex items-center px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
                     <HiArrowLeft className="mr-2 w-4 h-4" />
                     Back to Home
                 </Link>
 
-                <header className="mb-8">
-                    <h1 className="text-3xl font-black text-white tracking-tight mb-2">
+                <header className="mb-6 md:mb-8">
+                    <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-2">
                         Driver <span className="text-purple-400 italic">Dashboard</span>
                     </h1>
-                    <p className="text-slate-500 text-sm font-medium">
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">
                         Manage your trips, accept requests, and track your earnings.
                     </p>
                 </header>
