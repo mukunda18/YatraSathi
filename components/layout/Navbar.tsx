@@ -10,23 +10,23 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 p-6">
+        <nav className="fixed top-0 left-0 right-0 z-50 p-2 md:p-6">
             <div className="mx-auto max-w-7xl">
-                <div className="glass-card rounded-3xl px-8 h-16 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-3">
-                        <div className="rounded-xl bg-indigo-600 p-2 shadow-lg shadow-indigo-500/20">
-                            <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <div className="glass-card rounded-2xl md:rounded-3xl px-4 md:px-8 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-2 md:gap-3">
+                        <div className="rounded-lg md:rounded-xl bg-indigo-600 p-1.5 md:p-2 shadow-lg shadow-indigo-500/20">
+                            <svg className="h-4 w-4 md:h-5 md:w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
                         </div>
-                        <span className="text-2xl font-black tracking-tight text-white italic">
+                        <span className="text-xl md:text-2xl font-black tracking-tight text-white italic">
                             YatraSathi
                         </span>
                     </Link>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 md:gap-6">
                         {user ? (
-                            <div className="flex items-center gap-8">
+                            <div className="flex items-center gap-4 md:gap-8">
                                 <div className="hidden md:flex items-center gap-6">
                                     <Link href="/trips/join" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
                                         Find Rides
@@ -44,11 +44,11 @@ export default function Navbar({ user }: NavbarProps) {
                                 <UserDropdown user={user} />
                             </div>
                         ) : (
-                            <div className="flex items-center gap-3">
-                                <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white px-4 transition-colors">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <Link href="/login" className="text-xs md:text-sm font-bold text-slate-400 hover:text-white px-2 md:px-4 transition-colors">
                                     Login
                                 </Link>
-                                <Link href="/signup" className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-black text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all">
+                                <Link href="/signup" className="rounded-xl md:rounded-2xl bg-indigo-600 px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm font-black text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all">
                                     Signup
                                 </Link>
                             </div>
