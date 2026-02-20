@@ -18,14 +18,28 @@ export default async function HomePage() {
 
             <Navbar user={user} />
 
-            <main className="flex-1 pt-28 pb-12">
-                <div className="mx-auto max-w-6xl px-6">
-                    <div className="flex gap-8">
-                        <div className="flex-1 min-w-0">
+            <main className="flex-1 pt-24 md:pt-28 pb-12">
+                <div className="mx-auto max-w-6xl px-4 md:px-6">
+                    <div className="flex flex-col md:flex-row gap-8">
+                        <div className="flex-1 min-w-0 flex flex-col">
                             <Hero user={user} />
+
+                            {/* In mobile, show trips right after hero */}
+                            {user && (
+                                <div className="block md:hidden mt-10 mb-2">
+                                    <TripsSidebar />
+                                </div>
+                            )}
+
                             <Features />
                         </div>
-                        {user && <TripsSidebar />}
+
+                        {/* In desktop, show trips as a sidebar */}
+                        {user && (
+                            <div className="hidden md:block w-80 shrink-0 sticky top-28 h-fit">
+                                <TripsSidebar />
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>

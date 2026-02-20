@@ -27,7 +27,7 @@ export default function DriverTripsList() {
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-900/30 border border-white/5 rounded-xl p-4">
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-1">Total Trips</p>
                     <p className="text-2xl font-black text-white">{stats.total}</p>

@@ -89,26 +89,63 @@
     }
 
     /* Trip Statuses */
-    .status-scheduled { @apply text-indigo-400 bg-indigo-500/10 border-indigo-500/20; }
-    .status-ongoing { @apply text-amber-400 bg-amber-500/10 border-amber-500/20; }
-    .status-completed { @apply text-emerald-400 bg-emerald-500/10 border-emerald-500/20; }
-    .status-cancelled { @apply text-red-400 bg-red-500/10 border-red-500/20; }
+    .status-scheduled {
+        @apply text-indigo-400 bg-indigo-500/10 border-indigo-500/20;
+    }
+
+    .status-ongoing {
+        @apply text-amber-400 bg-amber-500/10 border-amber-500/20;
+    }
+
+    .status-completed {
+        @apply text-emerald-400 bg-emerald-500/10 border-emerald-500/20;
+    }
+
+    .status-cancelled {
+        @apply text-red-400 bg-red-500/10 border-red-500/20;
+    }
 
     /* Ride Request Statuses */
-    .status-waiting { @apply text-emerald-400 bg-emerald-500/10 border-emerald-500/20; }
-    .status-onboard { @apply text-indigo-400 bg-indigo-500/10 border-indigo-500/20; }
-    .status-dropedoff { @apply text-slate-400 bg-slate-500/10 border-slate-500/20; }
+    .status-waiting {
+        @apply text-emerald-400 bg-emerald-500/10 border-emerald-500/20;
+    }
+
+    .status-onboard {
+        @apply text-indigo-400 bg-indigo-500/10 border-indigo-500/20;
+    }
+
+    .status-dropedoff {
+        @apply text-slate-400 bg-slate-500/10 border-slate-500/20;
+    }
 
     /* Status Dots */
     .status-dot {
         @apply w-1.5 h-1.5 rounded-full;
     }
-    .status-dot-waiting { @apply bg-emerald-500; }
-    .status-dot-onboard { @apply bg-indigo-500; }
-    .status-dot-dropedoff { @apply bg-slate-500; }
-    .status-dot-completed { @apply bg-blue-500; }
-    .status-dot-cancelled { @apply bg-red-500; }
-    .status-dot-ongoing { @apply bg-amber-500; }
+
+    .status-dot-waiting {
+        @apply bg-emerald-500;
+    }
+
+    .status-dot-onboard {
+        @apply bg-indigo-500;
+    }
+
+    .status-dot-dropedoff {
+        @apply bg-slate-500;
+    }
+
+    .status-dot-completed {
+        @apply bg-blue-500;
+    }
+
+    .status-dot-cancelled {
+        @apply bg-red-500;
+    }
+
+    .status-dot-ongoing {
+        @apply bg-amber-500;
+    }
 }
 
 @keyframes slideDown {

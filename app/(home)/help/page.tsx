@@ -1,6 +1,6 @@
 import FaqAccordion from "@/components/support/FaqAccordion";
 import SupportForm from "@/components/support/SupportForm";
-import { HiChatAlt2, HiSearch, HiMail, HiChevronRight } from "react-icons/hi";
+import { HiChatAlt2, HiSearch, HiMail, HiChevronRight, HiArrowLeft } from "react-icons/hi";
 import Link from "next/link";
 
 export const metadata = {
@@ -45,7 +45,12 @@ export default function HelpPage() {
             <div className="absolute top-0 right-0 h-150 w-full max-w-200 bg-indigo-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-0 h-150 w-full max-w-200 bg-emerald-600/5 blur-[150px] rounded-full -z-10 pointer-events-none" />
 
-            <div className="max-w-3xl mx-auto px-6 py-20">
+            <div className="max-w-3xl mx-auto px-6 py-12 md:py-20">
+                <Link href="/" className="mb-8 md:mb-12 inline-flex items-center px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                    <HiArrowLeft className="mr-2 w-4 h-4" />
+                    Back to Home
+                </Link>
+
                 <section className="text-center mb-24">
                     <h1 className="text-5xl font-black text-white tracking-tighter mb-6">
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-indigo-500 to-indigo-600">Help Center</span>
