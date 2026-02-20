@@ -1,25 +1,25 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });
 
 export async function sendPasswordResetEmail(
-    to: string,
-    name: string,
-    resetUrl: string
+  to: string,
+  name: string,
+  resetUrl: string
 ) {
-    await transporter.sendMail({
-        from: process.env.SMTP_FROM || `YatraSathi <${process.env.SMTP_USER}>`,
-        to,
-        subject: "Reset Your YatraSathi Password",
-        html: `
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || `YatraSathi <${process.env.SMTP_USER}>`,
+    to,
+    subject: "Reset Your YatraSathi Password",
+    html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -52,5 +52,58 @@ export async function sendPasswordResetEmail(
   </div>
 </body>
 </html>`,
-    });
+  });
+}
+
+export async function sendSupportEmail(
+  fromEmail: string,
+  name: string,
+  subject: string,
+  message: string
+) {
+  const supportEmail = process.env.SMTP_USER;
+
+  await transporter.sendMail({
+    from: `YatraSathi Support <${process.env.SMTP_USER}>`,
+    to: supportEmail,
+    replyTo: `${name} <${fromEmail}>`,
+    subject: `[Support Ticket] ${subject}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { margin: 0; padding: 0; background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .wrapper { max-width: 560px; margin: 0 auto; padding: 48px 24px; }
+    .card { background: #1e293b; border-radius: 16px; padding: 40px; border: 1px solid rgba(255,255,255,0.08); }
+    h1 { color: #f8fafc; font-size: 20px; font-weight: 900; margin: 0 0 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; }
+    .meta { margin-bottom: 24px; }
+    .label { color: #475569; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
+    .value { color: #f8fafc; font-size: 14px; margin-bottom: 16px; }
+    .message-box { background: rgba(15, 23, 42, 0.5); border-radius: 12px; padding: 20px; color: #cbd5e1; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    .footer { color: #475569; font-size: 11px; text-align: center; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <h1>New Support Request</h1>
+      
+      <div class="meta">
+        <span class="label">From</span>
+        <div class="value">${name} (${fromEmail})</div>
+        
+        <span class="label">Subject</span>
+        <div class="value">${subject}</div>
+      </div>
+      
+      <span class="label">Message</span>
+      <div class="message-box">${message}</div>
+    </div>
+    <p class="footer">This is an automated notification from your YatraSathi Support Form.</p>
+  </div>
+</body>
+</html>`,
+  });
 }
