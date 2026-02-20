@@ -6,7 +6,7 @@ import { searchTripsAction } from "@/app/actions/searchActions";
 import { getAllUpcomingTripsAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
 import Card from "@/components/UI/Card";
-import { HiSearch, HiLocationMarker, HiArrowLeft } from "react-icons/hi";
+import { HiSearch, HiLocationMarker, HiArrowLeft, HiX } from "react-icons/hi";
 import Link from "next/link";
 import { parseWKT } from "@/utils/geo";
 import LocationField from "./ui/LocationField";
@@ -26,6 +26,7 @@ export default function TripSearchForm() {
     const [activeField, setActiveField] = useState<"from" | "to" | null>(null);
     const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
 
     useEffect(() => {
         const fetchProposedRoute = async () => {
@@ -134,7 +135,7 @@ export default function TripSearchForm() {
         try {
             const result = await getAllUpcomingTripsAction();
             if (result.success) {
-                const mappedTrips: TripSearchResult[] = (result.trips || []).map(trip => ({
+                const mappedTrips: TripSearchResult[] = (result.trips || []).map((trip) => ({
                     id: trip.id,
                     driver_user_id: trip.driver_user_id,
                     driver_name: trip.driver_name,
@@ -148,11 +149,10 @@ export default function TripSearchForm() {
                     travel_date: trip.travel_date,
                     from_address: trip.from_address,
                     to_address: trip.to_address,
-                    // These will be used for maps/booking if no search points selected
                     pickup_route_point: `POINT(${trip.from_lng} ${trip.from_lat})`,
                     drop_route_point: `POINT(${trip.to_lng} ${trip.to_lat})`,
                     from_loc: `POINT(${trip.from_lng} ${trip.from_lat})`,
-                    to_loc: `POINT(${trip.to_lng} ${trip.to_lat})`
+                    to_loc: `POINT(${trip.to_lng} ${trip.to_lat})`,
                 }));
                 setSearchResults(mappedTrips);
                 if (mappedTrips.length === 0) {
@@ -171,8 +171,11 @@ export default function TripSearchForm() {
     const handleResultClick = (trip: TripSearchResult) => {
         const isDeselecting = selectedTrip?.id === trip.id;
         setSelectedTrip(isDeselecting ? null : trip);
+        if (!isDeselecting) {
+            setIsMobileFormOpen(false);
+        }
 
-        // If selecting a trip and locations are not set (e.g. from Explore All),
+        // If selecting a trip and locations are not set (e.g. after Explore All),
         // auto-populate them with trip start and end points
         if (!isDeselecting && (!from || !to)) {
             if (!from) {
@@ -197,7 +200,7 @@ export default function TripSearchForm() {
             {/* Back button */}
             <Link
                 href="/"
-                className="absolute top-8 right-8 z-20 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all font-bold text-xs uppercase tracking-widest group shadow-lg"
+                className="absolute top-3 right-3 z-30 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-950/60 backdrop-blur-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all font-bold text-xs uppercase tracking-widest group shadow-lg md:top-8 md:right-8"
             >
                 <HiArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
                 Back
@@ -212,7 +215,9 @@ export default function TripSearchForm() {
                 onMapClick={handleMapClick}
             />
 
-            <div className="absolute top-8 left-8 w-full max-w-sm z-10 bottom-8">
+            <div
+                className={`absolute bottom-3 left-3 right-3 h-[52%] z-20 transition-all duration-300 md:top-8 md:left-8 md:right-auto md:bottom-8 md:h-auto md:w-full md:max-w-sm md:translate-y-0 md:opacity-100 md:pointer-events-auto ${isMobileFormOpen ? "translate-y-0 opacity-100" : "translate-y-[110%] opacity-0 pointer-events-none"}`}
+            >
                 <Card className="h-full border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card transition-all duration-500 hover:border-blue-500/20 flex flex-col p-0">
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-blue-500/10 blur-[60px] rounded-full transition-all duration-700 group-hover/card:bg-blue-500/20" />
 
@@ -222,7 +227,16 @@ export default function TripSearchForm() {
                                 <HiSearch className="text-blue-500 w-5 h-5" />
                                 <span>Find <span className="text-blue-500 font-black italic">Ride</span></span>
                             </h2>
-                            <div className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[8px] font-black text-blue-400 uppercase tracking-widest">Passenger Mode</div>
+                            <div className="flex items-center gap-2">
+                                <div className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[8px] font-black text-blue-400 uppercase tracking-widest">Passenger Mode</div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMobileFormOpen(false)}
+                                    className="md:hidden p-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                                >
+                                    <HiX className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -247,18 +261,18 @@ export default function TripSearchForm() {
                             context={context}
                         />
 
-                        <div className="flex gap-2 mt-2">
+                        <div className="grid grid-cols-3 gap-2 mt-2">
                             <button
                                 onClick={() => handleExploreAll()}
                                 disabled={loading}
-                                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] border border-white/5"
+                                className="py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] border border-white/5"
                             >
                                 Explore All
                             </button>
                             <button
                                 onClick={(e) => handleSearch(e)}
                                 disabled={loading}
-                                className="flex-[1.5] py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                className="col-span-2 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
                                 {loading ? (
                                     <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -266,6 +280,12 @@ export default function TripSearchForm() {
                                 {loading ? 'Searching...' : 'Find Match'}
                             </button>
                         </div>
+                        <Link
+                            href="/explore"
+                            className="block text-center text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                            Open Explore Page
+                        </Link>
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-5 pb-5 modern-scrollbar space-y-3 border-t border-white/5 pt-4 bg-slate-950/20">
@@ -301,6 +321,16 @@ export default function TripSearchForm() {
                     </div>
                 </Card>
             </div>
+            {!isMobileFormOpen && (
+                <button
+                    type="button"
+                    onClick={() => setIsMobileFormOpen(true)}
+                    className="md:hidden absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-2xl border border-blue-500/30 bg-slate-950/90 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300 shadow-2xl shadow-black/40 backdrop-blur-xl"
+                >
+                    <HiSearch className="w-4 h-4" />
+                    Show Form
+                </button>
+            )}
             <TripInfo
                 selectedTrip={selectedTrip}
                 setSelectedTrip={setSelectedTrip}

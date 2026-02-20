@@ -5,6 +5,7 @@ import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import Footer from "@/components/landing/Footer";
 import TripsSidebar from "@/components/landing/TripsSidebar";
+import ChatBot from "@/components/ChatBot";
 
 export default async function HomePage() {
     const user = await validateSession();
@@ -45,6 +46,7 @@ export default async function HomePage() {
             </main>
 
             <Footer />
+            <ChatBot />
         </div>
     );
 }

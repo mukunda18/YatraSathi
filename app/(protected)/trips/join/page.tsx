@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function TripsPage() {
     return (
-        <main className="h-screen w-full relative">
+        <main className="h-dvh w-full relative">
             <TripSearchForm />
         </main>
     );

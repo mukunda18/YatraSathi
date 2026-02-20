@@ -297,7 +297,7 @@ export default function TripMap({
             {mode === 'view' && (
                 <button
                     onClick={() => router.back()}
-                    className="absolute top-6 right-6 z-20 flex items-center gap-2 px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-2xl active:scale-95"
+                    className="absolute top-3 right-3 md:top-6 md:right-6 z-20 flex items-center gap-2 px-4 py-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-2xl active:scale-95"
                 >
                     <HiArrowLeft className="w-4 h-4" />
                     Back

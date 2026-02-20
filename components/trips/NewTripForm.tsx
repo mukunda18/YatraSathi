@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card";
-import { HiChatAlt2, HiPaperAirplane, HiPlusCircle } from "react-icons/hi";
+import { HiChatAlt2, HiPaperAirplane, HiPlusCircle, HiX } from "react-icons/hi";
 import LocationField from "./ui/LocationField";
 import DepartureSelector from "./ui/DepartureSelector";
 import FareAndSeats from "./ui/FareAndSeats";
@@ -34,6 +34,7 @@ export default function NewTripForm() {
     const [description, setDescription] = useState("");
 
     const [loading, setLoading] = useState(false);
+    const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -208,9 +209,11 @@ export default function NewTripForm() {
                 onMapClick={handleMapClick}
             />
 
-            <div className="absolute top-8 left-8 w-full max-w-sm z-10 max-h-[calc(100vh-4rem)] overflow-y-auto modern-scrollbar pr-2">
-                <form onSubmit={handleSubmit} className="space-y-3 pb-8">
-                    <Card className="p-5 border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card transition-all duration-500 hover:border-indigo-500/20">
+            <div
+                className={`absolute bottom-3 left-3 right-3 h-[52%] z-20 transition-all duration-300 md:top-8 md:left-8 md:right-auto md:bottom-8 md:h-auto md:w-full md:max-w-sm md:translate-y-0 md:opacity-100 md:pointer-events-auto ${isMobileFormOpen ? "translate-y-0 opacity-100" : "translate-y-[110%] opacity-0 pointer-events-none"}`}
+            >
+                <form onSubmit={handleSubmit} className="h-full">
+                    <Card className="h-full p-5 border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card transition-all duration-500 hover:border-indigo-500/20 flex flex-col">
                         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-indigo-500/10 blur-[60px] rounded-full transition-all duration-700 group-hover/card:bg-indigo-500/20" />
                         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 bg-emerald-500/5 blur-[50px] rounded-full transition-all duration-700 group-hover/card:bg-emerald-500/10" />
 
@@ -220,11 +223,20 @@ export default function NewTripForm() {
                                     <HiPaperAirplane className="text-indigo-500 rotate-45 w-5 h-5 shadow-indigo-500/20" />
                                     <span>Plan <span className="text-indigo-500 font-black italic">Trip</span></span>
                                 </h2>
-                                <div className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-black text-indigo-400 uppercase tracking-widest">Driver Mode</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-black text-indigo-400 uppercase tracking-widest">Driver Mode</div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsMobileFormOpen(false)}
+                                        className="md:hidden p-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                                    >
+                                        <HiX className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2.5 relative">
+                        <div className="space-y-2.5 relative flex-1 overflow-y-auto modern-scrollbar pr-1">
                             <LocationField
                                 mode="plan"
                                 type="from"
@@ -311,13 +323,23 @@ export default function NewTripForm() {
                             fullWidth
                             loading={loading}
                             disabled={!isReady}
-                            className={`mt-6 py-3.5 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] ${isReady ? "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20" : "bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-white/5"}`}
+                            className={`mt-4 py-3.5 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] shrink-0 ${isReady ? "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20" : "bg-slate-800 text-slate-500 cursor-not-allowed shadow-none border border-white/5"}`}
                         >
                             {loading ? "Publishing..." : isReady ? "Publish Journey" : "Fill all fields"}
                         </Button>
                     </Card>
                 </form>
             </div>
+            {!isMobileFormOpen && (
+                <button
+                    type="button"
+                    onClick={() => setIsMobileFormOpen(true)}
+                    className="md:hidden absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-2xl border border-indigo-500/30 bg-slate-950/90 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 shadow-2xl shadow-black/40 backdrop-blur-xl"
+                >
+                    <HiPaperAirplane className="w-4 h-4" />
+                    Plan Trip
+                </button>
+            )}
         </div>
     );
 }
