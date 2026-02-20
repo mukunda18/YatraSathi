@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { HiArrowLeft } from "react-icons/hi";
+
 export const metadata = {
     title: "Privacy Policy | YatraSathi",
     description: "Learn how we collect, use, and protect your personal information.",
@@ -5,10 +8,15 @@ export const metadata = {
 
 export default function PrivacyPage() {
     return (
-        <main className="min-h-screen bg-slate-950 relative overflow-hidden py-32 px-6">
+        <main className="min-h-screen bg-slate-950 relative overflow-hidden py-16 md:py-32 px-6">
             <div className="absolute top-0 right-0 h-100 w-100 bg-indigo-600/10 blur-[100px] rounded-full -z-10 pointer-events-none" />
 
             <div className="max-w-3xl mx-auto">
+                <Link href="/" className="mb-8 md:mb-12 inline-flex items-center px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                    <HiArrowLeft className="mr-2 w-4 h-4" />
+                    Back to Home
+                </Link>
+
                 <h1 className="text-4xl font-black text-white tracking-tight mb-8">Privacy <span className="text-indigo-500 italic">Policy</span></h1>
 
                 <div className="prose prose-invert prose-slate max-w-none space-y-8 text-slate-400 font-medium leading-loose">
