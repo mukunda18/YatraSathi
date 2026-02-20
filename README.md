@@ -21,7 +21,7 @@
 
 ### 👥 Team Members
 
-| Name | Role |
+| Name | Roll No. |
 |---|---|
 | Bikesh Sah | THA080BCT010 |
 | Mukunda Chaudhary | THA080BCT020 |
@@ -633,82 +633,10 @@ The application will be available at `http://localhost:3000`.
 | `PORT` | Port for the WebSocket server (default: 8080) |
 | `FRONTEND_ORIGIN` | Allowed origin for WebSocket CORS validation |
 
-> **Security Note:** Never commit `.env` or `.env.local` files to version control. Both files are listed in `.gitignore` by default.
 
 ---
 
-## 20. Challenges & Solutions
 
-### Challenge 1: Geospatial Proximity Without Full-Table Scans
-
-**Problem:** The initial implementation of trip search filtered results using `ST_Distance` in the `WHERE` clause. PostgreSQL cannot use a spatial index for this pattern, and the query planner therefore fell back to a sequential scan of the entire trips table. On larger datasets, this resulted in query times exceeding 175 milliseconds — unacceptable for an interactive search interface.
-
-**Solution:** The filter was replaced with `ST_DWithin`, which is specifically designed to be index-aware. The query planner can use the GIST index to geometrically prune the candidate set before computing exact distances, reducing query time to approximately 2 milliseconds on the same dataset. A composite B-Tree index on `(status, departure_time)` was also added to restrict the spatial scan to only `scheduled` trips rather than the full table.
-
----
-
-### Challenge 2: WebSocket Race Conditions in the Go Hub
-
-**Problem:** Under concurrent connection load, multiple goroutines accessed the shared rooms map in the Hub simultaneously. This produced data races that were detected by Go's built-in race detector (`go run -race`) and caused intermittent panics in production-like testing.
-
-**Solution:** A `sync.RWMutex` was introduced to protect all access to the rooms map. High-frequency broadcast operations acquire a read lock, allowing concurrent reads. Low-frequency registration and deregistration operations acquire an exclusive write lock. All map mutations were also moved exclusively into the Hub's central `Run()` goroutine via channel communication, further reducing the surface area for concurrent access.
-
----
-
-### Challenge 3: Atomic Seat Deduction Under Concurrency
-
-**Problem:** When two passengers submitted join requests for the same trip and both were accepted by the driver in rapid succession, a time-of-check/time-of-use (TOCTOU) race condition allowed both acceptances to succeed even when only one seat remained. The seat count would drop below zero, leaving the data in an invalid state.
-
-**Solution:** The acceptance logic was rewritten as a single atomic SQL `UPDATE` with a `WHERE available_seats >= seats_requested` condition in the same statement. PostgreSQL's row-level write lock acquired by the `UPDATE` statement serializes concurrent acceptances at the database level. The number of affected rows returned by the statement is checked before committing — if zero rows were updated, the transaction is rolled back and the driver is informed that the seats are no longer available.
-
----
-
-### Challenge 4: Coordinate Ordering Bugs
-
-**Problem:** MapLibre GL uses the GeoJSON standard coordinate order of `[longitude, latitude]`, while most user-facing input fields and APIs use the more intuitive `(latitude, longitude)` order. Silent transposition bugs during development caused trip origin and destination markers to be plotted in incorrect geographic locations with no obvious error message.
-
-**Solution:** A centralized `geo.ts` utility module was created, defining a typed `Coordinates` object with explicit named `lat` and `lng` fields, along with named conversion functions for each external format — GeoJSON arrays, PostGIS text strings, and display formatting. All coordinate handling throughout the application passes through this module, eliminating any implicit assumptions about ordering at call sites.
-
----
-
-### Challenge 5: JWT Verification in the Next.js Edge Runtime
-
-**Problem:** Next.js middleware executes in the Edge Runtime, which does not support Node.js-specific APIs. The standard `jsonwebtoken` library used elsewhere in the application depends on Node.js crypto APIs and cannot be imported in middleware, making token verification in the route protection layer impossible without a workaround.
-
-**Solution:** The `jose` library was adopted for token verification in the middleware layer. `jose` is built entirely on the Web Crypto API, which is available in both the Edge Runtime and in Node.js, making it compatible across all execution contexts. The middleware uses `jose` only for signature and expiry verification; full user context hydration is deferred to server components and server actions where the complete Node.js runtime is available.
-
----
-
-## 21. Future Enhancements
-
-- **Route Corridor Matching** — Rather than proximity-to-origin only, implement spatial matching against the full trip route geometry so passengers whose pickup and dropoff points fall along the driver's path are surfaced with higher priority on the Explore page.
-- **Push Notifications** — Integrate the Web Push API to notify drivers of new join requests and passengers of request status changes even when the browser tab is inactive or closed.
-- **In-App Payments** — Integrate a payment gateway (Stripe or eSewa for the Nepali market) for secure fare escrow and automated post-trip settlement between drivers and passengers.
-- **Driver ETA Estimation** — Integrate a routing engine such as OSRM or Valhalla to compute turn-by-turn ETAs based on real road network data and the driver's live position.
-- **Recurring Trips** — Allow drivers to schedule repeating trips on a daily or weekly cadence without re-entering full trip details each time.
-- **Native Mobile Applications** — React Native applications for iOS and Android, sharing business logic with the existing web frontend through a shared API layer.
-- **Admin Dashboard** — An internal moderation panel for reviewing driver verification documents, managing reported trips, resolving disputes, and generating platform analytics and usage reports.
-- **ML-Based Fare Recommendations** — A regression model trained on historical trip data incorporating distance, time-of-day, vehicle type, and demand patterns to dynamically suggest optimal fare values to drivers at trip creation time.
-
----
-
-## 22. Conclusion
-
-YatraSathi successfully demonstrates the integration of advanced DBMS concepts within a production-quality, fully deployed full-stack web application. The project validates the practical utility of several key technical approaches:
-
-**PostGIS geospatial extensions** enabled real-world location-based trip discovery, reducing proximity search latency from ~175ms to ~2ms through GIST spatial indexing — a concrete demonstration of how appropriate data types and indexing strategies translate directly into user-facing performance.
-
-**Relational database design principles** — normalization to 3NF, referential integrity enforced through foreign key constraints, domain validation through CHECK constraints, and automated denormalization through PL/pgSQL triggers — were applied to a complex multi-entity domain with real business rules and data integrity requirements.
-
-**A dedicated Go WebSocket server** with the Hub pattern delivered trip-scoped, low-latency GPS broadcasting entirely decoupled from the REST API, demonstrating how separating realtime concerns into a purpose-built runtime can improve both performance and architectural clarity.
-
-**Custom JWT authentication** with HTTP-only cookies, Next.js middleware route protection, and role-based access control showed how a secure authentication system can be built without relying on external providers, with full control over the session lifecycle.
-
-**AI integration via Google Gemini** demonstrated how large language models can be embedded as first-class application features rather than external tools, providing contextual travel assistance directly within the platform experience.
-
-The challenges encountered throughout the project — spatial query optimization, WebSocket concurrency management, atomic database operations under race conditions, coordinate system discrepancies, and Edge Runtime constraints — provided substantial insight into the engineering realities of building data-intensive, real-time applications at a level of depth beyond standard coursework. YatraSathi stands as a cohesive, end-to-end demonstration of how principled database design, combined with a modern dual-server architecture, translates into a performant, scalable, and community-focused travel platform.
-
----
 
 <div align="center">
 
