@@ -113,8 +113,8 @@ export default function ChatBot() {
                 aria-label="Toggle YatraSathi Assistant"
                 style={{
                     position: "fixed",
-                    bottom: "24px",
-                    right: "24px",
+                    bottom: "16px",
+                    right: "16px",
                     zIndex: 9999,
                     width: "56px",
                     height: "56px",
@@ -156,13 +156,13 @@ export default function ChatBot() {
                 <div
                     style={{
                         position: "fixed",
-                        bottom: "92px",
-                        right: "24px",
+                        bottom: "84px",
+                        right: "16px",
                         zIndex: 9998,
-                        width: "360px",
-                        maxWidth: "calc(100vw - 48px)",
-                        height: "500px",
-                        maxHeight: "calc(100vh - 120px)",
+                        width: "calc(100vw - 32px)",
+                        maxWidth: "360px",
+                        height: "calc(100vh - 120px)",
+                        maxHeight: "500px",
                         backgroundColor: "#ffffff",
                         borderRadius: "16px",
                         boxShadow: "0 8px 40px rgba(0,0,0,0.18)",

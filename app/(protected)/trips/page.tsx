@@ -22,12 +22,12 @@ export default async function MyTripsPage() {
             <div className="absolute top-0 right-0 h-150 w-full max-w-200 bg-indigo-600/10 blur-[150px] rounded-full -z-10 pointer-events-none" />
             <div className="absolute bottom-0 left-0 h-100 w-full max-w-150 bg-purple-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
-            <div className="max-w-5xl mx-auto px-6 py-16">
-                <header className="mb-10">
-                    <h1 className="text-4xl font-black text-white tracking-tight mb-2">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 md:py-16">
+                <header className="mb-8 md:mb-10">
+                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">
                         My <span className="text-indigo-500 italic">Trips</span>
                     </h1>
-                    <p className="text-slate-500 text-sm font-medium">
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">
                         Manage your joined rides and track your journey history.
                     </p>
                 </header>

@@ -98,31 +98,31 @@ export default function ChatBotInline() {
     return (
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-sm overflow-hidden">
             {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-green-700/30 to-green-600/10 border-b border-white/5">
-                <div className="w-9 h-9 rounded-full bg-green-600/20 border border-green-500/30 flex items-center justify-center text-lg flex-shrink-0">
+            <div className="flex items-center gap-2 md:gap-3 px-4 md:px-5 py-3 md:py-4 bg-gradient-to-r from-green-700/30 to-green-600/10 border-b border-white/5">
+                <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-green-600/20 border border-green-500/30 flex items-center justify-center text-base md:text-lg flex-shrink-0">
                     🤖
                 </div>
                 <div>
-                    <p className="text-sm font-bold text-white leading-tight">YatraSathi Assistant</p>
-                    <p className="text-xs text-slate-400">Ask anything about your rides</p>
+                    <p className="text-xs md:text-sm font-bold text-white leading-tight">YatraSathi Assistant</p>
+                    <p className="text-[10px] md:text-xs text-slate-400">Ask anything about your rides</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-xs text-green-400 font-medium">Online</span>
+                    <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] md:text-xs text-green-400 font-medium whitespace-nowrap">Online</span>
                 </div>
             </div>
 
-            {/* Messages */}
-            <div className="h-72 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-slate-950/30">
+            {/* Messages - div[2] in user XPath context */}
+            <div className="h-56 sm:h-64 md:h-72 overflow-y-auto px-3 md:px-5 py-3 md:py-5 flex flex-col gap-2.5 md:gap-4 bg-slate-950/30">
                 {chat.map((msg, index) => (
                     <div
                         key={index}
                         className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                         <div
-                            className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${msg.role === "user"
-                                    ? "bg-indigo-600 text-white rounded-2xl rounded-br-sm whitespace-pre-wrap break-words"
-                                    : "bg-slate-800 text-slate-200 border border-white/5 rounded-2xl rounded-bl-sm"
+                            className={`max-w-[88%] md:max-w-[80%] px-3.5 md:px-5 py-2 md:py-3 text-xs md:text-sm leading-relaxed ${msg.role === "user"
+                                ? "bg-indigo-600 text-white rounded-xl md:rounded-2xl rounded-br-sm whitespace-pre-wrap break-words shadow-sm"
+                                : "bg-slate-800 text-slate-200 border border-white/5 rounded-xl md:rounded-2xl rounded-bl-sm shadow-sm"
                                 }`}
                         >
                             {msg.role === "assistant" ? formatText(msg.text) : msg.text}
@@ -132,11 +132,11 @@ export default function ChatBotInline() {
 
                 {loading && (
                     <div className="flex justify-start">
-                        <div className="bg-slate-800 border border-white/5 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5 items-center">
+                        <div className="bg-slate-800 border border-white/5 rounded-xl md:rounded-2xl rounded-bl-sm px-3 md:px-4 py-2 md:py-3 flex gap-1.5 items-center">
                             {[0, 1, 2].map((i) => (
                                 <span
                                     key={i}
-                                    className="w-1.5 h-1.5 rounded-full bg-slate-400"
+                                    className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-slate-400"
                                     style={{ animation: `chatBounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
                                 />
                             ))}
@@ -146,21 +146,21 @@ export default function ChatBotInline() {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick prompts */}
-            <div className="px-4 pt-3 pb-2 flex flex-wrap gap-2 border-t border-white/5 bg-slate-900/40">
+            {/* Quick prompts - div[3] in user XPath context */}
+            <div className="px-3 md:px-5 py-2 md:py-3.5 flex flex-wrap gap-2 border-t border-white/5 bg-slate-900/40">
                 {["My upcoming rides", "Booking status", "Cancel policy"].map((prompt) => (
                     <button
                         key={prompt}
                         onClick={() => { setMessage(prompt); inputRef.current?.focus(); }}
-                        className="text-xs px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white transition-all"
+                        className="text-[10px] md:text-xs px-3 py-1.5 rounded-full bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white transition-all active:scale-95"
                     >
                         {prompt}
                     </button>
                 ))}
             </div>
 
-            {/* Input */}
-            <div className="px-4 py-3 flex gap-2 items-center bg-slate-900/40 border-t border-white/5">
+            {/* Input - div[4] in user XPath context */}
+            <div className="px-3 md:px-5 py-2.5 md:py-4 flex gap-2.5 items-center bg-slate-900/60 border-t border-white/5">
                 <input
                     ref={inputRef}
                     value={message}
@@ -168,15 +168,15 @@ export default function ChatBotInline() {
                     onKeyDown={handleKeyDown}
                     placeholder="Type your question…"
                     disabled={loading}
-                    className="flex-1 bg-slate-800 border border-white/10 text-white placeholder-slate-500 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all disabled:opacity-50"
+                    className="flex-1 bg-slate-800/80 border border-white/10 text-white placeholder-slate-500 text-xs md:text-sm rounded-lg md:rounded-xl px-3.5 md:px-5 py-2 md:py-3 outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition-all disabled:opacity-50"
                 />
                 <button
                     onClick={sendMessage}
                     disabled={loading || !message.trim()}
-                    className="w-10 h-10 rounded-xl bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 transition-colors"
+                    className="w-9 h-9 md:w-11 md:h-11 rounded-lg md:rounded-xl bg-green-600 hover:bg-green-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
                     aria-label="Send"
                 >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                    <svg width="15" height="15" className="md:w-5 md:h-5" viewBox="0 0 24 24" fill="white">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                     </svg>
                 </button>
