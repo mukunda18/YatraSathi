@@ -138,7 +138,7 @@ A dedicated **Go 1.25** server handles all **WebSocket** connections. It maintai
 | **Tailwind CSS** | v4 | Utility-first CSS with custom design tokens |
 | **Zustand** | Latest | Global state stores for auth, trips, UI, and live tracking |
 | **MapLibre GL** + react-map-gl | Latest | WebGL map rendering, route visualization, live tracking view |
-| **Google Gemini** (`@google/generative-ai`) | Latest | AI chatbot for in-app travel assistance |
+| **Google Gemini** (`@google/generative-ai`) | Latest | AI chatbot for assistance |
 | **Sonner** | Latest | Toast notification system |
 | **react-icons** | Latest | Icon library |
 | **Nodemailer** | Latest | Transactional email delivery |
