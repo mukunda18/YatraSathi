@@ -3,12 +3,10 @@
 import { useState, useEffect } from "react";
 import TripMap from "../map/TripMap";
 import { searchTripsAction } from "@/app/actions/searchActions";
-import { getAllUpcomingTripsAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
 import Card from "@/components/UI/Card";
 import { HiSearch, HiLocationMarker, HiArrowLeft, HiX } from "react-icons/hi";
 import Link from "next/link";
-import { parseWKT } from "@/utils/geo";
 import LocationField from "./ui/LocationField";
 import TripResultCard from "./ui/TripResultCard";
 import TripInfo from "./ui/TripInfo";
@@ -53,7 +51,15 @@ export default function TripSearchForm() {
 
     const context: SearchFormContext = {
         from, to, fromAddress, toAddress, searchResults, selectedTrip, routeGeometry, activeField, currentPosition,
-        setFrom, setTo, setFromAddress, setToAddress, setSearchResults, setSelectedTrip, setRouteGeometry, setActiveField, setCurrentPosition
+        setFrom,
+        setTo,
+        setFromAddress,
+        setToAddress,
+        setSearchResults,
+        setSelectedTrip,
+        setRouteGeometry,
+        setActiveField,
+        setCurrentPosition
     };
 
     const handleMapClick = async (lat: number, lng: number) => {
@@ -128,70 +134,11 @@ export default function TripSearchForm() {
         }
     };
 
-    const handleExploreAll = async () => {
-        setLoading(true);
-        setSelectedTrip(null);
-        setRouteGeometry(null);
-        try {
-            const result = await getAllUpcomingTripsAction();
-            if (result.success) {
-                const mappedTrips: TripSearchResult[] = (result.trips || []).map((trip) => ({
-                    id: trip.id,
-                    driver_user_id: trip.driver_user_id,
-                    driver_name: trip.driver_name,
-                    driver_rating: trip.driver_rating,
-                    driver_total_ratings: trip.driver_total_ratings,
-                    vehicle_type: trip.vehicle_type,
-                    vehicle_number: trip.vehicle_number,
-                    vehicle_info: trip.vehicle_info as any,
-                    fare_per_seat: trip.fare_per_seat,
-                    available_seats: trip.available_seats,
-                    travel_date: trip.travel_date,
-                    from_address: trip.from_address,
-                    to_address: trip.to_address,
-                    pickup_route_point: `POINT(${trip.from_lng} ${trip.from_lat})`,
-                    drop_route_point: `POINT(${trip.to_lng} ${trip.to_lat})`,
-                    from_loc: `POINT(${trip.from_lng} ${trip.from_lat})`,
-                    to_loc: `POINT(${trip.to_lng} ${trip.to_lat})`,
-                }));
-                setSearchResults(mappedTrips);
-                if (mappedTrips.length === 0) {
-                    toast.info("No upcoming trips found.");
-                }
-            } else {
-                toast.error(result.message || "Failed to fetch trips");
-            }
-        } catch {
-            toast.error("An unexpected error occurred.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleResultClick = (trip: TripSearchResult) => {
         const isDeselecting = selectedTrip?.id === trip.id;
         setSelectedTrip(isDeselecting ? null : trip);
         if (!isDeselecting) {
             setIsMobileFormOpen(false);
-        }
-
-        // If selecting a trip and locations are not set (e.g. after Explore All),
-        // auto-populate them with trip start and end points
-        if (!isDeselecting && (!from || !to)) {
-            if (!from) {
-                const start = parseWKT(trip.pickup_route_point);
-                if (start) {
-                    setFrom({ ...start, address: trip.from_address });
-                    setFromAddress(trip.from_address);
-                }
-            }
-            if (!to) {
-                const end = parseWKT(trip.drop_route_point);
-                if (end) {
-                    setTo({ ...end, address: trip.to_address });
-                    setToAddress(trip.to_address);
-                }
-            }
         }
     };
 
@@ -261,18 +208,11 @@ export default function TripSearchForm() {
                             context={context}
                         />
 
-                        <div className="grid grid-cols-3 gap-2 mt-2">
-                            <button
-                                onClick={() => handleExploreAll()}
-                                disabled={loading}
-                                className="py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] border border-white/5"
-                            >
-                                Explore All
-                            </button>
+                        <div className="grid grid-cols-1 gap-2 mt-2">
                             <button
                                 onClick={(e) => handleSearch(e)}
                                 disabled={loading}
-                                className="col-span-2 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                className="py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
                                 {loading ? (
                                     <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -5,7 +5,6 @@ import { HiX, HiStar, HiChevronRight } from "react-icons/hi";
 import { useState } from "react";
 import { createRideRequestAction } from "@/app/actions/tripActions";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
 import { TripSearchResult, TripLocation } from "@/store/types";
 import { useUserRidesStore } from "@/store/userRidesStore";
@@ -31,7 +30,6 @@ interface TripInfoProps {
 export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: TripInfoProps) {
     const [loading, setLoading] = useState(false);
     const [seats, setSeats] = useState(1);
-    const router = useRouter();
     const { userId } = useAuthStore();
 
     if (!selectedTrip) return null;
