@@ -5,7 +5,6 @@ import { TripSearchResult, TripLocation } from "@/store/types";
 import { toast } from "sonner";
 import { useState } from "react";
 import { createRideRequestAction } from "@/app/actions/tripActions";
-import { useRouter } from "next/navigation";
 import { parseWKT } from "@/utils/geo";
 import { useUserRidesStore } from "@/store/userRidesStore";
 
@@ -19,7 +18,6 @@ interface TripResultCardProps {
 
 export default function TripResultCard({ trip, isSelected, onClick, from, to }: TripResultCardProps) {
     const [loading, setLoading] = useState(false);
-    const router = useRouter();
 
     const handleBook = async (e: React.MouseEvent) => {
         e.stopPropagation();

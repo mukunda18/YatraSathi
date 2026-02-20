@@ -4,7 +4,7 @@ import TripMap from "@/components/map/TripMap";
 import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
 import Link from "next/link";
-import { cancelBookingAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
+import { cancelBookingAction, createRideRequestAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
 import { cancelTripAction } from "@/app/actions/driverActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
@@ -12,6 +12,7 @@ import Card from "@/components/UI/Card";
 import Overlay from "@/components/UI/Overlay";
 import { TripViewData } from "@/store/types";
 import { postGoApi } from "@/utils/goApiClient";
+import { useRouter } from "next/navigation";
 
 interface TripViewClientProps {
     initialTrip: TripViewData;
@@ -20,10 +21,13 @@ interface TripViewClientProps {
 
 export default function TripViewClient({ initialTrip, isDriver = false }: TripViewClientProps) {
     const currentTrip = initialTrip;
+    const router = useRouter();
     const [cancelling, setCancelling] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelMode, setCancelMode] = useState<"trip" | "booking" | null>(null);
     const [cancelReason, setCancelReason] = useState("");
+    const [joining, setJoining] = useState(false);
+    const [joinSeats, setJoinSeats] = useState(1);
     const [isStatusLoading, setIsStatusLoading] = useState(false);
     const [riderRating, setRiderRating] = useState(5);
     const [riderComment, setRiderComment] = useState("");
@@ -153,6 +157,41 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
             toast.error("Failed to submit rating");
         } finally {
             setRatingRiderRequestId(null);
+        }
+    };
+
+    const handleJoinTrip = async () => {
+        if (isDriver || currentTrip.my_request) return;
+        if (currentTrip.trip_status !== "scheduled") {
+            toast.error("Only scheduled trips can be joined.");
+            return;
+        }
+        if (currentTrip.available_seats <= 0) {
+            toast.error("No seats available.");
+            return;
+        }
+
+        setJoining(true);
+        try {
+            const result = await createRideRequestAction({
+                trip_id: currentTrip.trip_id,
+                pickup_location: { lat: currentTrip.from_lat, lng: currentTrip.from_lng },
+                pickup_address: currentTrip.from_address,
+                drop_location: { lat: currentTrip.to_lat, lng: currentTrip.to_lng },
+                drop_address: currentTrip.to_address,
+                seats: joinSeats,
+                total_fare: currentTrip.fare_per_seat * joinSeats
+            });
+            if (result.success) {
+                toast.success("Ride request sent successfully!");
+                router.refresh();
+            } else {
+                toast.error(result.message || "Failed to send ride request");
+            }
+        } catch {
+            toast.error("An unexpected error occurred");
+        } finally {
+            setJoining(false);
         }
     };
 
@@ -450,6 +489,50 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
                     {/* Actions */}
                     <div className="pt-4 space-y-3">
+                        {!isDriver && !currentTrip.my_request && (
+                            <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Seats to Join</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">{currentTrip.available_seats} Seats Available</p>
+                                </div>
+                                <div className="flex items-center gap-3 bg-slate-800/60 border border-white/5 rounded-xl p-1.5 w-fit">
+                                    <button
+                                        type="button"
+                                        onClick={() => setJoinSeats((prev) => Math.max(1, prev - 1))}
+                                        disabled={joining}
+                                        className="w-8 h-8 rounded-lg hover:bg-white/10 text-white font-black transition-all active:scale-95"
+                                    >
+                                        -
+                                    </button>
+                                    <span className="text-sm font-black text-white w-5 text-center">{joinSeats}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setJoinSeats((prev) => Math.min(Math.max(currentTrip.available_seats, 1), prev + 1))}
+                                        disabled={joining || currentTrip.available_seats <= 0}
+                                        className="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white font-black transition-all active:scale-95"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleJoinTrip}
+                                    disabled={joining || currentTrip.available_seats === 0 || currentTrip.trip_status !== "scheduled"}
+                                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    {joining ? (
+                                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    ) : currentTrip.trip_status !== "scheduled" ? (
+                                        "Trip Unavailable"
+                                    ) : currentTrip.available_seats === 0 ? (
+                                        "No Seats Available"
+                                    ) : (
+                                        "Request to Join"
+                                    )}
+                                </button>
+                            </div>
+                        )}
+
                         {isDriver && currentTrip.trip_status === 'scheduled' && (
                             <button
                                 onClick={handleStartTrip}
