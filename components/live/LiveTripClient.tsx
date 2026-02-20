@@ -194,9 +194,9 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
     }
 
     return (
-        <div className="relative flex h-screen w-full flex-col overflow-hidden">
-            <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between border-b border-white/5 bg-slate-950/40 p-4 backdrop-blur-xl">
-                <div className="flex items-center gap-4">
+        <div className="relative flex h-dvh w-full flex-col overflow-hidden">
+            <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between border-b border-white/5 bg-slate-950/40 p-3 backdrop-blur-xl md:p-4">
+                <div className="flex items-center gap-3 md:gap-4">
                     <button
                         onClick={() => router.back()}
                         className="rounded-xl border border-white/10 bg-white/5 p-2 text-white transition-all hover:bg-white/10"
@@ -239,9 +239,9 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
                 />
             </div>
 
-            <div className="z-10 border-t border-white/5 bg-slate-950 p-6">
-                <div className="mx-auto flex max-w-3xl items-center justify-between gap-6">
-                    <div className="flex flex-1 items-center gap-4">
+            <div className="z-10 border-t border-white/5 bg-slate-950 p-3 md:p-6">
+                <div className="mx-auto flex max-w-3xl flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+                    <div className="flex w-full flex-1 items-center gap-3 md:gap-4">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10">
                             <HiLocationMarker className="h-6 w-6 text-indigo-400" />
                         </div>
@@ -271,7 +271,7 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
                     </div>
                 </div>
 
-                <div className="mx-auto mt-3 flex max-w-3xl items-center justify-end gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                <div className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 md:justify-end md:gap-4">
                     <span className="inline-flex items-center gap-1">
                         <HiClock className="h-3 w-3 text-slate-400" />
                         Active {currentTimeLabel}
@@ -288,7 +288,7 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
                         {canMarkOnboard && (
                             <button
                                 onClick={handleMarkOnboard}
-                                className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:bg-indigo-500/20"
+                                className="w-full md:w-auto rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:bg-indigo-500/20"
                             >
                                 I am Onboard
                             </button>
@@ -296,7 +296,7 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
                         {canMarkDropoff && (
                             <button
                                 onClick={handleMarkDropoff}
-                                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20"
+                                className="w-full md:w-auto rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20"
                             >
                                 I am Dropped Off
                             </button>

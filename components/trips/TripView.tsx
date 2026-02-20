@@ -157,7 +157,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     };
 
     return (
-        <div className="relative w-full h-screen overflow-hidden flex flex-col md:flex-row">
+        <div className="relative w-full h-dvh overflow-hidden flex flex-col md:flex-row">
             {/* Map Area */}
             <div className="flex-1 relative order-2 md:order-2 h-1/2 md:h-full">
                 <TripMap mode="view" trip={currentTrip} />
@@ -165,10 +165,10 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
             {/* Info Sidebar Area */}
             <div className="w-full md:w-100 bg-slate-950 border-l border-white/5 z-10 overflow-y-auto modern-scrollbar order-1 md:order-1 h-1/2 md:h-full">
-                <div className="p-8 space-y-8">
+                <div className="p-4 md:p-8 space-y-6 md:space-y-8">
                     {/* Header */}
                     <div>
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                             <span className={`status-badge status-${currentTrip.trip_status}`}>
                                 {currentTrip.trip_status}
                             </span>
@@ -183,7 +183,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                             )}
                             <div className="flex items-center gap-1.5 text-slate-500">
                                 <HiClock className="w-4 h-4" />
-                                <span className="text-[11px] font-bold">{formatDate(currentTrip.travel_date)}</span>
+                                <span className="text-[10px] md:text-[11px] font-bold">{formatDate(currentTrip.travel_date)}</span>
                             </div>
                         </div>
                         <h1 className="text-2xl font-black text-white tracking-tight leading-tight">
@@ -225,7 +225,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                     </div>
 
                     {/* Quick Stats */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
                             <p className="text-[8px] font-black uppercase tracking-widest text-slate-600 mb-1">Fare/Seat</p>
                             <p className="text-sm font-black text-emerald-400 flex items-center gap-0.5">

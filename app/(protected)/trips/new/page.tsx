@@ -12,7 +12,7 @@ export default async function NewTripPage() {
     }
 
     return (
-        <main className="h-screen w-screen overflow-hidden relative bg-slate-950">
+        <main className="h-dvh w-full overflow-hidden relative bg-slate-950">
             {user.isDriver ? (
                 <NewTripForm />
             ) : (

@@ -154,8 +154,8 @@ export default function LiveTripDriver() {
     }
 
     return (
-        <div className="flex h-screen w-full flex-col overflow-hidden md:flex-row">
-            <div className="relative flex-1">
+        <div className="flex h-dvh w-full flex-col overflow-hidden md:flex-row">
+            <div className="relative h-[52%] md:h-auto md:flex-1">
                 <TripMap
                     mode="live"
                     trip={displayTrip}
@@ -167,7 +167,7 @@ export default function LiveTripDriver() {
                 />
             </div>
 
-            <aside className="w-full overflow-y-auto border-l border-white/5 bg-slate-950 p-6 md:w-105">
+            <aside className="h-[48%] w-full overflow-y-auto border-t border-white/5 bg-slate-950 p-4 md:h-auto md:w-105 md:border-l md:border-t-0 md:p-6">
                 <div className="mb-6 flex items-center justify-between">
                     <Link
                         href="/driver/dashboard"

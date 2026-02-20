@@ -108,7 +108,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
     };
 
     return (
-        <div className="absolute top-8 left-104 w-full max-w-sm z-10 bottom-8 transition-all duration-500 animate-in slide-in-from-left-4 fade-in">
+        <div className="absolute top-16 bottom-3 left-3 right-3 z-30 transition-all duration-500 animate-in slide-in-from-bottom-4 fade-in md:top-8 md:left-104 md:right-auto md:w-full md:max-w-sm md:bottom-8 md:slide-in-from-left-4">
             <Card className="h-full border-white/5 bg-slate-950/40 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group/card flex flex-col p-0">
 
                 <div className="p-5 pb-3 relative shrink-0 border-b border-white/5 bg-white/5">
