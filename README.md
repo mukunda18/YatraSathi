@@ -635,7 +635,20 @@ The application will be available at `http://localhost:3000`.
 
 
 ---
+20. Future Enhancements
 
+*Route Corridor Matching — Rather than proximity-to-origin only, implement spatial matching against the full trip route geometry so passengers whose pickup and dropoff points fall along the driver's path are surfaced with higher priority on the Explore page.
+*Push Notifications — Integrate the Web Push API to notify drivers of new join requests and passengers of request status changes even when the browser tab is inactive or closed.
+*In-App Payments — Integrate a payment gateway (Stripe or eSewa for the Nepali market) for secure fare escrow and automated post-trip settlement between drivers and passengers.
+*Driver ETA Estimation — Integrate a routing engine such as OSRM or Valhalla to compute turn-by-turn ETAs based on real road network data and the driver's live position.
+*Recurring Trips — Allow drivers to schedule repeating trips on a daily or weekly cadence without re-entering full trip details each time.
+*Native Mobile Applications — React Native applications for iOS and Android, sharing business logic with the existing web frontend through a shared API layer.
+*Admin Dashboard — An internal moderation panel for reviewing driver verification documents, managing reported trips, resolving disputes, and generating platform analytics and usage reports.
+*ML-Based Fare Recommendations — A regression model trained on historical trip data incorporating distance, time-of-day, vehicle type, and demand patterns to dynamically suggest optimal fare values to drivers at trip creation time.
+
+
+21. Conclusion
+YatraSathi successfully demonstrates the integration of advanced DBMS concepts within a production-quality, fully deployed full-stack web application. The project validates the practical utility of several key technical approaches and stands as a cohesive, end-to-end demonstration of how principled database design, combined with a modern dual-server architecture, translates into a performant, scalable, and community-focused travel platform.
 
 
 <div align="center">
