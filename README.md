@@ -456,7 +456,7 @@ A dedicated page showing all available upcoming trips as cards. Passengers searc
 ### Trip Search
 
 ![Trip Search](./images/trip_search.png)
-*Search for trips by specifying origin and destination with real-time suggestions*
+*Search for trips by specifying origin and destination with real-time suggestions or by clicking directly on the map.*
 
 ---
 
@@ -675,37 +675,7 @@ The `backend/.env` file configures the **Go WebSocket server**. It must share th
 
 **YatraSathi** successfully demonstrates the integration of advanced DBMS concepts within a production-quality, fully deployed full-stack web application. The project validates the practical utility of several key technical approaches and stands as a cohesive, end-to-end demonstration of how principled database design, combined with a modern dual-server architecture, translates into a performant, scalable, and community-focused travel platform.
 
-### Project Achievements
 
-1. **Full-Stack Application:** Successfully built a complete trip sharing platform encompassing a passenger-facing web app, a driver dashboard, and a dual-server backend with both REST and WebSocket capabilities.
-2. **Geospatial Trip Matching:** Integrated **PostGIS** with **GIST** spatial indexing to enable real-world proximity-based trip discovery, reducing search query latency from ~175ms to ~2ms.
-3. **Real-Time GPS Tracking:** Implemented a dedicated **Go WebSocket** server with a Hub pattern for live, trip-scoped driver location broadcasting to connected passengers.
-4. **Secure Authentication:** Built a fully custom **JWT-based** authentication system with HTTP-only cookie sessions, bcrypt password hashing, and Next.js middleware route protection — without any third-party auth providers.
-5. **Robust Database Design:** Designed a normalized **PostgreSQL** schema to Third Normal Form with referential integrity, domain CHECK constraints, strategic indexing, and automated PL/pgSQL triggers.
-6. **AI Integration:** Embedded a **Google Gemini**-powered AI chatbot directly into the platform for contextual in-app travel guidance.
-7. **Cloud Deployment:** Successfully deployed the full application to a publicly accessible production environment at [yatra-sathi-black.vercel.app](https://yatra-sathi-black.vercel.app/).
-8. **Professional Documentation:** Comprehensive project report covering architecture, database design, geospatial implementation, and setup for academic submission and viva.
-
-### Future Enhancements
-
-- **Route Corridor Matching** — Spatial matching against the full trip route geometry for more accurate passenger-driver pairing.
-- **Push Notifications** — Web Push API for status alerts beyond the browser session.
-- **In-App Payments** — Stripe or eSewa integration for secure fare settlement.
-- **Driver ETA Estimation** — OSRM or Valhalla routing engine for real-time ETAs.
-- **Recurring Trips** — Scheduled repeating trips for regular commutes.
-- **Native Mobile Apps** — React Native applications for iOS and Android.
-- **Admin Dashboard** — Moderation panel for driver verification and platform analytics.
-- **ML-Based Fare Recommendations** — Data-driven fare optimization model.
-- **Multi-language Support** — Nepali and regional language internationalization.
-
-### Lessons Learned
-
-1. **Spatial Database Design:** Choosing the correct data type (`GEOGRAPHY` over `GEOMETRY`) and the correct query function (`ST_DWithin` over `ST_Distance` in filters) has a dramatic and measurable impact on query performance that cannot be recovered through application-layer optimization alone.
-2. **Separation of Concerns in Architecture:** Isolating the realtime **WebSocket** layer into a dedicated **Go** server eliminated interference between long-lived connections and HTTP request handling, making both systems easier to reason about and maintain independently.
-3. **Concurrency is Hard:** Race conditions in both the Go WebSocket hub and the database seat-deduction logic required careful reasoning about atomicity, locks, and channel-based state management — bugs that only surfaced under deliberate stress testing.
-4. **Database Transactions are Non-Negotiable:** Any operation modifying more than one related row or table must be wrapped in an explicit transaction. The cost of not doing so — partial writes, inconsistent state — far outweighs the overhead of transactional safety.
-5. **Environment and Configuration Management:** Consistent environment variable management across two server runtimes and a deployment platform required a disciplined approach to avoid misconfiguration across development and production.
-6. **Security Requires Depth:** **JWT**, **bcrypt**, parameterized queries, HTTP-only cookies, CORS restrictions, and role-based access control are each individually necessary and collectively sufficient — removing any single layer creates an exploitable gap.
 
 ---
 
