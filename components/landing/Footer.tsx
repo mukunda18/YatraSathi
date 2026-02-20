@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
     return (
@@ -7,11 +8,13 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                     <div className="md:col-span-2">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="rounded-xl bg-indigo-600 p-2">
-                                <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                            </div>
+                            <Image
+                                src="/logo.png"
+                                alt="YatraSathi logo"
+                                width={40}
+                                height={40}
+                                className="h-10 w-10 rounded-xl object-contain"
+                            />
                             <span className="text-lg font-black text-white italic">YatraSathi</span>
                         </div>
                         <p className="text-sm text-slate-500 leading-relaxed max-w-sm">

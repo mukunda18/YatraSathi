@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { createTripAction } from "@/app/actions/tripActions";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card";
-import { HiChatAlt2, HiPaperAirplane, HiPlusCircle, HiX } from "react-icons/hi";
+import { HiChatAlt2, HiPlusCircle, HiX } from "react-icons/hi";
 import LocationField from "./ui/LocationField";
 import DepartureSelector from "./ui/DepartureSelector";
 import FareAndSeats from "./ui/FareAndSeats";
@@ -220,7 +221,13 @@ export default function NewTripForm() {
                         <div className="mb-5 relative">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-black text-white flex items-center gap-2 tracking-tight">
-                                    <HiPaperAirplane className="text-indigo-500 rotate-45 w-5 h-5 shadow-indigo-500/20" />
+                                    <Image
+                                        src="/logo.png"
+                                        alt="YatraSathi logo"
+                                        width={20}
+                                        height={20}
+                                        className="h-5 w-5 rounded-md object-contain"
+                                    />
                                     <span>Plan <span className="text-indigo-500 font-black italic">Trip</span></span>
                                 </h2>
                                 <div className="flex items-center gap-2">
@@ -336,7 +343,13 @@ export default function NewTripForm() {
                     onClick={() => setIsMobileFormOpen(true)}
                     className="md:hidden absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-2xl border border-indigo-500/30 bg-slate-950/90 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 shadow-2xl shadow-black/40 backdrop-blur-xl"
                 >
-                    <HiPaperAirplane className="w-4 h-4" />
+                    <Image
+                        src="/logo.png"
+                        alt="YatraSathi logo"
+                        width={16}
+                        height={16}
+                        className="h-4 w-4 rounded-sm object-contain"
+                    />
                     Plan Trip
                 </button>
             )}

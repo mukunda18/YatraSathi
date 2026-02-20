@@ -28,7 +28,7 @@ export async function sendPasswordResetEmail(
     body { margin: 0; padding: 0; background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     .wrapper { max-width: 560px; margin: 0 auto; padding: 48px 24px; }
     .card { background: #1e293b; border-radius: 16px; padding: 40px; border: 1px solid rgba(255,255,255,0.08); }
-    .logo { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; background: #6366f1; color: white; font-size: 24px; font-weight: 900; font-style: italic; margin-bottom: 24px; }
+    .logo { display: block; width: 56px; height: 56px; border-radius: 14px; object-fit: contain; margin-bottom: 24px; }
     h1 { color: #f8fafc; font-size: 24px; font-weight: 900; margin: 0 0 8px; }
     p { color: #94a3b8; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
     .btn { display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 900; font-size: 15px; }
@@ -40,7 +40,7 @@ export async function sendPasswordResetEmail(
 <body>
   <div class="wrapper">
     <div class="card">
-      <div class="logo">Y</div>
+      <img class="logo" src="/logo.png" alt="YatraSathi logo" />
       <h1>Reset Your Password</h1>
       <p>Hi ${name},<br/>Someone (hopefully you) requested a password reset for your YatraSathi account.</p>
       <a href="${resetUrl}" class="btn">Reset Password</a>

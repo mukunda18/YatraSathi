@@ -2,6 +2,7 @@
 
 import { SafeUser } from "@/app/actions/authActions";
 import UserDropdown from "@/components/layout/UserDropdown";
+import Image from "next/image";
 import Link from "next/link";
 
 interface NavbarProps {
@@ -14,11 +15,13 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="mx-auto max-w-7xl">
                 <div className="glass-card rounded-2xl md:rounded-3xl px-4 md:px-8 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2 md:gap-3">
-                        <div className="rounded-lg md:rounded-xl bg-indigo-600 p-1.5 md:p-2 shadow-lg shadow-indigo-500/20">
-                            <svg className="h-4 w-4 md:h-5 md:w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                        </div>
+                        <Image
+                            src="/logo.png"
+                            alt="YatraSathi logo"
+                            width={36}
+                            height={36}
+                            className="h-8 w-8 md:h-9 md:w-9 rounded-lg md:rounded-xl object-contain"
+                        />
                         <span className="text-xl md:text-2xl font-black tracking-tight text-white italic">
                             YatraSathi
                         </span>
