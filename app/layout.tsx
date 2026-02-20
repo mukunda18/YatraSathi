@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "YatraSathi",
   description: "Your perfect travel companion",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 import { Toaster } from "sonner";
