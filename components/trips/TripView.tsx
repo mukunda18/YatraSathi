@@ -4,7 +4,7 @@ import TripMap from "@/components/map/TripMap";
 import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
 import Link from "next/link";
-import { cancelBookingAction, createRideRequestAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
+import { cancelBookingAction, createRideRequestFromTripAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
 import { cancelTripAction } from "@/app/actions/driverActions";
 import { toast } from "sonner";
 import { HiTrash } from "react-icons/hi2";
@@ -173,14 +173,9 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
 
         setJoining(true);
         try {
-            const result = await createRideRequestAction({
+            const result = await createRideRequestFromTripAction({
                 trip_id: currentTrip.trip_id,
-                pickup_location: { lat: currentTrip.from_lat, lng: currentTrip.from_lng },
-                pickup_address: currentTrip.from_address,
-                drop_location: { lat: currentTrip.to_lat, lng: currentTrip.to_lng },
-                drop_address: currentTrip.to_address,
-                seats: joinSeats,
-                total_fare: currentTrip.fare_per_seat * joinSeats
+                seats: joinSeats
             });
             if (result.success) {
                 toast.success("Ride request sent successfully!");

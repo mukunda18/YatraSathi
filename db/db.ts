@@ -496,6 +496,55 @@ export const createRideRequest = async (data: {
     }
 };
 
+export const getTripJoinDefaultsById = async (trip_id: string): Promise<{
+    from_lat: number;
+    from_lng: number;
+    to_lat: number;
+    to_lng: number;
+    from_address: string;
+    to_address: string;
+    fare_per_seat: number;
+} | null> => {
+    const sql = `
+        SELECT
+            ST_Y(t.from_location::geometry) as from_lat,
+            ST_X(t.from_location::geometry) as from_lng,
+            ST_Y(t.to_location::geometry) as to_lat,
+            ST_X(t.to_location::geometry) as to_lng,
+            t.from_address,
+            t.to_address,
+            t.fare_per_seat
+        FROM trips t
+        WHERE t.id = $1
+        LIMIT 1;
+    `;
+    try {
+        const res = await query(sql, [trip_id]);
+        if ((res.rowCount ?? 0) === 0) return null;
+        const row = res.rows[0] as {
+            from_lat: number;
+            from_lng: number;
+            to_lat: number;
+            to_lng: number;
+            from_address: string;
+            to_address: string;
+            fare_per_seat: string | number;
+        };
+        return {
+            from_lat: row.from_lat,
+            from_lng: row.from_lng,
+            to_lat: row.to_lat,
+            to_lng: row.to_lng,
+            from_address: row.from_address,
+            to_address: row.to_address,
+            fare_per_seat: Number(row.fare_per_seat),
+        };
+    } catch (error) {
+        console.error("Error getting trip join defaults:", error);
+        return null;
+    }
+};
+
 
 export const getJoinedTripsByRiderId = async (rider_id: string): Promise<Record<string, unknown>[]> => {
     const sql = `

@@ -4,6 +4,7 @@ import {
     canUserAccessLiveTrip,
     createTrip,
     createRideRequest,
+    getTripJoinDefaultsById,
     getJoinedTripsByRiderId,
     getTripViewById,
     rateDriverByRider,
@@ -36,12 +37,13 @@ export async function createTripAction(data: {
         return { success: false, message: Object.values(validation.errors || {})[0] };
     }
 
-    const fromPoint = `POINT(${data.from_location.lng} ${data.from_location.lat})`;
-    const toPoint = `POINT(${data.to_location.lng} ${data.to_location.lat})`;
-
     if (!data.route || data.route.length < 2) {
         return { success: false, message: "Route is required to create a trip" };
     }
+    const routeStart = data.route[0];
+    const routeEnd = data.route[data.route.length - 1];
+    const fromPoint = `POINT(${routeStart[0]} ${routeStart[1]})`;
+    const toPoint = `POINT(${routeEnd[0]} ${routeEnd[1]})`;
 
     const trip = await createTrip({
         driver_id: driver!.id,
@@ -66,6 +68,44 @@ export async function createTripAction(data: {
     }
 
     return { success: true, tripId: trip.id };
+}
+
+export async function createRideRequestFromTripAction(data: {
+    trip_id: string;
+    seats: number;
+}) {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
+
+    if (data.seats < 1) {
+        return { success: false, message: "Must book at least 1 seat" };
+    }
+
+    const defaults = await getTripJoinDefaultsById(data.trip_id);
+    if (!defaults) {
+        return { success: false, message: "Trip not found" };
+    }
+
+    const pickupPoint = `POINT(${defaults.from_lng} ${defaults.from_lat})`;
+    const dropPoint = `POINT(${defaults.to_lng} ${defaults.to_lat})`;
+    const totalFare = defaults.fare_per_seat * data.seats;
+
+    const result = await createRideRequest({
+        rider_id: userId!,
+        trip_id: data.trip_id,
+        pickup_location: pickupPoint,
+        pickup_address: defaults.from_address,
+        drop_location: dropPoint,
+        drop_address: defaults.to_address,
+        seats: data.seats,
+        total_fare: totalFare
+    });
+
+    if (!result.success) {
+        return { success: false, message: result.message };
+    }
+
+    return { success: true, requestId: result.request!.id };
 }
 
 export async function createRideRequestAction(data: {
