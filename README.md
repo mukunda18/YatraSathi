@@ -453,6 +453,13 @@ A dedicated page showing all available upcoming trips as cards. Passengers searc
 
 ---
 
+### Trip Search
+
+![Trip Search](./images/trip_search.png)
+*Search for trips by specifying origin and destination with real-time suggestions*
+
+---
+
 ### Trip Planning
 
 ![Trip Planning](./images/plan_trip.png)
@@ -647,8 +654,6 @@ The `backend/.env` file configures the **Go WebSocket server**. It must share th
 | `JWT_SECRET` | Must match the value in `.env.local` |
 | `PORT` | Port for the WebSocket server (default: `8080`) |
 | `FRONTEND_ORIGIN` | Allowed origin for WebSocket CORS validation |
-
-> **Security Note:** Never commit `.env` or `.env.local` files to version control. Both are listed in `.gitignore` by default.
 
 ---
 
