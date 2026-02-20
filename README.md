@@ -12,8 +12,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://yatra-sathi-black.vercel.app/)
 
-> **DBMS Project | Department of Computer Science & Engineering**
-> Submitted in partial fulfillment of the requirements for the course: *Database Management Systems*
+
 
 **🌐 Live Deployment:** [https://yatra-sathi-black.vercel.app/](https://yatra-sathi-black.vercel.app/)
 
