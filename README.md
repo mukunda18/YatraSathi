@@ -624,7 +624,7 @@ The application will be available at `http://localhost:3000`.
 
 ## 20. Environment Variables
 
-### Frontend — `.env.local`
+### Frontend
 
 The `.env.local` file in the project root configures the **Next.js** application. It holds database credentials, JWT secrets, and third-party API keys required for the frontend server and its API routes.
 
@@ -637,7 +637,7 @@ The `.env.local` file in the project root configures the **Next.js** application
 | `NEXT_PUBLIC_WS_URL` | Go WebSocket server URL (e.g. `ws://localhost:8080`) |
 | `FRONTEND_ORIGIN` | Frontend origin URL used by the Go server for CORS |
 
-### Backend — `backend/.env`
+### Backend
 
 The `backend/.env` file configures the **Go WebSocket server**. It must share the `JWT_SECRET` value with the frontend to validate tokens on WebSocket handshake.
 
