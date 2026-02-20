@@ -23,9 +23,9 @@
 
 | Name | Role |
 |---|---|
-| Bikesh Sah | Full-Stack Development & Database Design |
-| Mukunda Chaudhary | Backend Development & Real-Time System |
-| Pramish Marasini | Frontend Development & Map Integration |
+| Bikesh Sah | THA080BCT010 |
+| Mukunda Chaudhary | THA080BCT020 |
+| Pramish Marasini | THA080BCT024 |
 
 ---
 
