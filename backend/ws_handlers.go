@@ -128,7 +128,6 @@ func handleLocationUpdate(c *Client, payloadRaw json.RawMessage) {
 			Event: "driver_location_updated",
 			Payload: map[string]interface{}{
 				"tripId":     payload.TripID,
-				"userId":     c.userID,
 				"lat":        payload.Lat,
 				"lng":        payload.Lng,
 				"heading":    payload.Heading,
@@ -146,11 +145,16 @@ func handleLocationUpdate(c *Client, payloadRaw json.RawMessage) {
 			return
 		}
 		riderName := getUserName(ctx, c.userID)
-		hub.BroadcastToTrip(payload.TripID, SocketResponse{
+		requestID := getRequestIDForTripRider(ctx, payload.TripID, c.userID)
+		if requestID == "" {
+			c.writeJSON(SocketResponse{Event: "error", Payload: map[string]string{"message": "active ride request not found"}})
+			return
+		}
+		hub.BroadcastToTripRole(payload.TripID, "driver", SocketResponse{
 			Event: "rider_location_updated",
 			Payload: map[string]interface{}{
 				"tripId":     payload.TripID,
-				"userId":     c.userID,
+				"requestId":  requestID,
 				"riderName":  riderName,
 				"lat":        payload.Lat,
 				"lng":        payload.Lng,

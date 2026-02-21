@@ -12,7 +12,6 @@ interface DriverPosition {
 
 interface LiveRiderPosition {
     request_id: string;
-    rider_id: string;
     rider_name: string;
     lat: number;
     lng: number;
@@ -33,7 +32,7 @@ interface LiveDriverState {
     totalDistanceKm: number;
     initializeFromTrip: (trip: LiveDriverTripData) => void;
     setDriverPosition: (position: DriverPosition | null) => void;
-    upsertLiveRiderPosition: (data: { riderId: string; lat: number; lng: number; status: string }) => void;
+    upsertLiveRiderPosition: (data: { requestId: string; lat: number; lng: number; status: string }) => void;
     clear: () => void;
 }
 
@@ -70,7 +69,6 @@ const getLiveRiderPositions = (riders: LiveDriverRider[]): LiveRiderPosition[] =
         .filter((rider) => rider.current_lat != null && rider.current_lng != null)
         .map((rider) => ({
             request_id: rider.request_id,
-            rider_id: rider.rider_id,
             rider_name: rider.rider_name,
             lat: rider.current_lat!,
             lng: rider.current_lng!,
@@ -121,10 +119,10 @@ export const useLiveDriverStore = create<LiveDriverState>((set) => ({
         });
     },
 
-    upsertLiveRiderPosition: ({ riderId, lat, lng, status }) => {
+    upsertLiveRiderPosition: ({ requestId, lat, lng, status }) => {
         set((state) => {
             const riders = state.riders.map((rider) =>
-                rider.rider_id === riderId
+                rider.request_id === requestId
                     ? { ...rider, current_lat: lat, current_lng: lng, live_status: status }
                     : rider
             );
@@ -132,7 +130,6 @@ export const useLiveDriverStore = create<LiveDriverState>((set) => ({
                 .filter((rider) => rider.current_lat != null && rider.current_lng != null)
                 .map((rider) => ({
                     request_id: rider.request_id,
-                    rider_id: rider.rider_id,
                     rider_name: rider.rider_name,
                     lat: rider.current_lat!,
                     lng: rider.current_lng!,

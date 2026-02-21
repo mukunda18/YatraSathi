@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"net/url"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -123,6 +123,22 @@ func (h *Hub) BroadcastToTrip(tripID string, msg SocketResponse) {
 	clients := make([]*Client, 0, len(room))
 	for c := range room {
 		clients = append(clients, c)
+	}
+	h.mu.RUnlock()
+
+	for _, c := range clients {
+		c.writeJSON(msg)
+	}
+}
+
+func (h *Hub) BroadcastToTripRole(tripID, role string, msg SocketResponse) {
+	h.mu.RLock()
+	room := h.rooms[tripID]
+	clients := make([]*Client, 0, len(room))
+	for c := range room {
+		if c.role == role {
+			clients = append(clients, c)
+		}
 	}
 	h.mu.RUnlock()
 

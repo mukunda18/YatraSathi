@@ -349,12 +349,13 @@ export const createTrip = async (data: {
     }
 };
 
-export const searchTrips = async (from_location: string, to_location: string): Promise<Record<string, unknown>[]> => {
+export const searchTrips = async (from_location: string, to_location: string, viewer_user_id?: string): Promise<Record<string, unknown>[]> => {
     const sql = `
         SELECT 
-            t.id, t.driver_id, t.from_address, t.to_address, t.travel_date, t.fare_per_seat, 
+            t.id, t.from_address, t.to_address, t.travel_date, t.fare_per_seat, 
             t.total_seats, t.available_seats, t.description, t.status,
-            u.id as driver_user_id, u.name as driver_name, d.avg_rating as driver_rating, d.total_ratings as driver_total_ratings,
+            u.name as driver_name, d.avg_rating as driver_rating, d.total_ratings as driver_total_ratings,
+            COALESCE($3::uuid = u.id, false) as is_own_trip,
             d.vehicle_type, d.vehicle_number, d.vehicle_info,
             ST_AsText(t.from_location) as from_loc,
             ST_AsText(t.to_location) as to_loc,
@@ -372,20 +373,7 @@ export const searchTrips = async (from_location: string, to_location: string): P
                  FROM trip_stops ts WHERE ts.trip_id = t.id
                 ), '[]'::json
             ) as stops,
-            COALESCE(
-                (SELECT json_agg(json_build_object(
-                    'name', ru.name,
-                    'pickup_address', rr.pickup_address,
-                    'drop_address', rr.drop_address,
-                    'seats', rr.seats,
-                    'lat', ST_Y(rr.pickup_location::geometry),
-                    'lng', ST_X(rr.pickup_location::geometry)
-                ))
-                 FROM ride_requests rr
-                 JOIN users ru ON rr.rider_id = ru.id
-                 WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard')
-                ), '[]'::json
-            ) as riders
+            '[]'::json as riders
         FROM trips t
         JOIN drivers d ON t.driver_id = d.id
         JOIN users u ON d.user_id = u.id
@@ -399,7 +387,7 @@ export const searchTrips = async (from_location: string, to_location: string): P
         ORDER BY t.travel_date ASC;
     `;
     try {
-        const res = await query(sql, [from_location, to_location]);
+        const res = await query(sql, [from_location, to_location, viewer_user_id ?? null]);
         return res.rows;
     } catch (error) {
         console.error('Error searching trips:', error);
@@ -442,7 +430,6 @@ const createRideRequestAtomic = async (data: {
     pickup_address?: string | null;
     drop_location?: string | null;
     drop_address?: string | null;
-    total_fare?: number | null;
 }): Promise<{ success: boolean; message?: string; request?: RideRequest }> => {
     const sql = `
         WITH trip_data AS (
@@ -469,31 +456,54 @@ const createRideRequestAtomic = async (data: {
                 td.trip_status,
                 td.available_seats,
                 td.driver_user_id,
-                COALESCE(ST_GeogFromText($4), td.from_location) AS pickup_location,
+                COALESCE(ST_GeogFromText($4), td.from_location) AS requested_pickup_location,
                 COALESCE(NULLIF($5, ''), td.from_address) AS pickup_address,
-                COALESCE(ST_GeogFromText($6), td.to_location) AS drop_location,
+                COALESCE(ST_GeogFromText($6), td.to_location) AS requested_drop_location,
                 COALESCE(NULLIF($7, ''), td.to_address) AS drop_address,
-                COALESCE($8::numeric, td.fare_per_seat * $3::numeric) AS total_fare
+                td.fare_per_seat * $3::numeric AS total_fare
             FROM trip_data td
+        ),
+        snapped_input AS (
+            SELECT
+                ri.trip_id,
+                ri.route_id,
+                ri.trip_status,
+                ri.available_seats,
+                ri.driver_user_id,
+                ri.requested_pickup_location,
+                ri.pickup_address,
+                ri.requested_drop_location,
+                ri.drop_address,
+                COALESCE(
+                    ST_ClosestPoint(r.geom::geometry, ri.requested_pickup_location::geometry)::geography,
+                    ri.requested_pickup_location
+                ) AS pickup_location,
+                COALESCE(
+                    ST_ClosestPoint(r.geom::geometry, ri.requested_drop_location::geometry)::geography,
+                    ri.requested_drop_location
+                ) AS drop_location,
+                ri.total_fare
+            FROM ride_input ri
+            LEFT JOIN routes r ON r.id = ri.route_id
         ),
         decision AS (
             SELECT
                 CASE
                     WHEN NOT EXISTS (SELECT 1 FROM trip_data) THEN 'trip_not_found'
-                    WHEN EXISTS (SELECT 1 FROM ride_input ri WHERE ri.trip_status <> 'scheduled') THEN 'trip_not_scheduled'
-                    WHEN EXISTS (SELECT 1 FROM ride_input ri WHERE ri.driver_user_id = $1) THEN 'own_trip'
-                    WHEN EXISTS (SELECT 1 FROM ride_input ri WHERE ri.available_seats < $3) THEN 'not_enough_seats'
+                    WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.trip_status <> 'scheduled') THEN 'trip_not_scheduled'
+                    WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.driver_user_id = $1) THEN 'own_trip'
+                    WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.available_seats < $3) THEN 'not_enough_seats'
                     WHEN EXISTS (
                         SELECT 1
-                        FROM ride_input ri
+                        FROM snapped_input si
                         WHERE NOT EXISTS (
                             SELECT 1
                             FROM routes r
-                            WHERE r.id = ri.route_id
-                              AND ST_Intersects(r.buffer_100, ri.pickup_location)
-                              AND ST_Intersects(r.buffer_100, ri.drop_location)
-                              AND ST_LineLocatePoint(r.geom::geometry, ri.pickup_location::geometry) <
-                                  ST_LineLocatePoint(r.geom::geometry, ri.drop_location::geometry)
+                            WHERE r.id = si.route_id
+                              AND ST_Intersects(r.buffer_100, si.requested_pickup_location)
+                              AND ST_Intersects(r.buffer_100, si.requested_drop_location)
+                              AND ST_LineLocatePoint(r.geom::geometry, si.requested_pickup_location::geometry) <
+                                  ST_LineLocatePoint(r.geom::geometry, si.requested_drop_location::geometry)
                         )
                     ) THEN 'route_mismatch'
                     ELSE NULL
@@ -506,15 +516,15 @@ const createRideRequestAtomic = async (data: {
             )
             SELECT
                 $1,
-                ri.trip_id,
-                ri.pickup_location,
-                ri.pickup_address,
-                ri.drop_location,
-                ri.drop_address,
+                si.trip_id,
+                si.pickup_location,
+                si.pickup_address,
+                si.drop_location,
+                si.drop_address,
                 $3,
-                ri.total_fare,
+                si.total_fare,
                 'waiting'
-            FROM ride_input ri
+            FROM snapped_input si
             CROSS JOIN decision d
             WHERE d.failure IS NULL
             ON CONFLICT (rider_id, trip_id) DO NOTHING
@@ -555,8 +565,7 @@ const createRideRequestAtomic = async (data: {
             data.pickup_location ?? null,
             data.pickup_address ?? null,
             data.drop_location ?? null,
-            data.drop_address ?? null,
-            data.total_fare ?? null
+            data.drop_address ?? null
         ]);
         const row = res.rows[0] as (RideRequest & { failure?: RideRequestFailureCode | null }) | undefined;
         if (!row || row.failure || !row.id) {
@@ -577,7 +586,6 @@ export const createRideRequest = async (data: {
     drop_location: string;
     drop_address: string;
     seats: number;
-    total_fare: number;
 }): Promise<{ success: boolean; message?: string; request?: RideRequest }> => {
     return createRideRequestAtomic(data);
 };
@@ -620,30 +628,34 @@ export const getJoinedTripsByRiderId = async (rider_id: string): Promise<Record<
     }
 };
 
-export const getTripViewById = async (trip_id: string, rider_id?: string): Promise<Record<string, unknown> | null> => {
+export const isDriverViewerForTrip = async (trip_id: string, viewer_user_id: string): Promise<boolean> => {
     const sql = `
-        SELECT 
-            t.id as trip_id, t.from_address, t.to_address, t.travel_date, 
-            t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
-            ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
-            ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
-            u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, d.avg_rating as driver_rating,
-            d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
-            ST_AsGeoJSON(r.geom) as route_geojson,
-            (
-                SELECT COALESCE(json_agg(ts), '[]')
-                FROM (
-                    SELECT id, stop_address, stop_order,
-                           ST_Y(stop_location::geometry) as lat, ST_X(stop_location::geometry) as lng
-                    FROM trip_stops 
-                    WHERE trip_id = t.id 
-                    ORDER BY stop_order
-                ) ts
-            ) as stops,
-            (
+        SELECT 1
+        FROM trips t
+        JOIN drivers d ON t.driver_id = d.id
+        WHERE t.id = $1
+          AND d.user_id = $2
+        LIMIT 1;
+    `;
+    try {
+        const res = await query(sql, [trip_id, viewer_user_id]);
+        return (res.rowCount ?? 0) > 0;
+    } catch (error) {
+        console.error("Error checking trip driver viewer:", error);
+        return false;
+    }
+};
+
+const getTripViewByIdInternal = async (
+    trip_id: string,
+    viewer_user_id: string | undefined,
+    includeRiders: boolean
+): Promise<Record<string, unknown> | null> => {
+    const ridersSelect = includeRiders
+        ? `(
                 SELECT COALESCE(json_agg(rd), '[]')
                 FROM (
-                    SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
+                    SELECT rr.id as request_id, ru.name as rider_name,
                            rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
                            ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
                            ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng,
@@ -657,7 +669,30 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
                     JOIN users ru ON rr.rider_id = ru.id
                     WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard', 'dropedoff')
                 ) rd
-            ) as riders,
+            ) as riders,`
+        : `'[]'::json as riders,`;
+
+    const sql = `
+        SELECT 
+            t.id as trip_id, t.from_address, t.to_address, t.travel_date, 
+            t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
+            ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
+            ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
+            u.name as driver_name, d.avg_rating as driver_rating,
+            COALESCE($2::uuid = u.id, false) as is_driver_viewer,
+            d.vehicle_type, d.vehicle_number, d.vehicle_info,
+            ST_AsGeoJSON(r.geom) as route_geojson,
+            (
+                SELECT COALESCE(json_agg(ts), '[]')
+                FROM (
+                    SELECT id, stop_address, stop_order,
+                           ST_Y(stop_location::geometry) as lat, ST_X(stop_location::geometry) as lng
+                    FROM trip_stops 
+                    WHERE trip_id = t.id 
+                    ORDER BY stop_order
+                ) ts
+            ) as stops,
+            ${ridersSelect}
             (
                 SELECT json_build_object(
                     'id', my_rr.id,
@@ -684,7 +719,7 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
         WHERE t.id = $1;
     `;
     try {
-        const res = await query(sql, [trip_id, rider_id || null]);
+        const res = await query(sql, [trip_id, viewer_user_id || null]);
         if (res.rows.length === 0) return null;
 
         const trip = res.rows[0] as Record<string, unknown> & {
@@ -701,6 +736,12 @@ export const getTripViewById = async (trip_id: string, rider_id?: string): Promi
         return null;
     }
 };
+
+export const getTripViewForDriverById = async (trip_id: string, viewer_user_id?: string): Promise<Record<string, unknown> | null> =>
+    getTripViewByIdInternal(trip_id, viewer_user_id, true);
+
+export const getTripViewForRiderById = async (trip_id: string, viewer_user_id?: string): Promise<Record<string, unknown> | null> =>
+    getTripViewByIdInternal(trip_id, viewer_user_id, false);
 
 export const getDriverByUserId = async (user_id: string): Promise<Driver | undefined> => {
     const sql = `SELECT * FROM drivers WHERE user_id = $1;`;
@@ -770,9 +811,7 @@ t.id as trip_id, t.from_address, t.to_address, t.travel_date,
         json_agg(
             json_build_object(
                 'request_id', rr.id,
-                'rider_id', rr.rider_id,
                 'rider_name', u.name,
-                'rider_phone', u.phone,
                 'pickup_address', rr.pickup_address,
                 'drop_address', rr.drop_address,
                 'seats', rr.seats,
@@ -1032,7 +1071,6 @@ export const getAllUpcomingTrips = async (): Promise<Record<string, unknown>[]> 
             ST_X(t.from_location::geometry) as from_lng,
             ST_Y(t.to_location::geometry) as to_lat,
             ST_X(t.to_location::geometry) as to_lng,
-            u.id as driver_user_id,
             u.name as driver_name,
             d.avg_rating as driver_rating,
             d.total_ratings as driver_total_ratings,

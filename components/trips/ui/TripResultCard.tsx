@@ -31,8 +31,8 @@ export default function TripResultCard({ trip, isSelected, onClick, from, to }: 
             const startLoc = parseWKT(trip.from_loc) || pickupPoint;
             const endLoc = parseWKT(trip.to_loc) || dropPoint;
 
-            const finalPickupLoc = from ? { lat: from.lat, lng: from.lng } : (pickupPoint || startLoc);
-            const finalDropLoc = to ? { lat: to.lat, lng: to.lng } : (dropPoint || endLoc);
+            const finalPickupLoc = pickupPoint || (from ? { lat: from.lat, lng: from.lng } : startLoc);
+            const finalDropLoc = dropPoint || (to ? { lat: to.lat, lng: to.lng } : endLoc);
             const finalPickupAddr = from?.address || trip.from_address;
             const finalDropAddr = to?.address || trip.to_address;
 
@@ -49,8 +49,7 @@ export default function TripResultCard({ trip, isSelected, onClick, from, to }: 
                 pickup_address: finalPickupAddr,
                 drop_location: finalDropLoc,
                 drop_address: finalDropAddr,
-                seats: 1,
-                total_fare: trip.fare_per_seat
+                seats: 1
             });
 
             if (result.success) {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cancelTripAction } from "@/app/actions/driverActions";
 import { cancelBookingAction } from "@/app/actions/tripActions";
-import { HiX, HiPhone, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
+import { HiX, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
 import { toast } from "sonner";
 import Overlay from "../UI/Overlay";
 import Card from "../UI/Card";
@@ -14,9 +14,7 @@ import { postGoApi } from "@/utils/goApiClient";
 interface DriverTripRequest {
     request_id?: string;
     id?: string;
-    rider_id?: string;
     rider_name: string;
-    rider_phone?: string;
     pickup_address: string;
     drop_address: string;
     seats: number;
@@ -217,15 +215,6 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                        {request.rider_phone && (
-                                            <a
-                                                href={`tel:${request.rider_phone}`}
-                                                className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                                            >
-                                                <HiPhone className="w-3.5 h-3.5" />
-                                            </a>
-                                        )}
-
                                         <div className="flex items-center gap-2">
                                             {request.status === "waiting" && trip.trip_status === "scheduled" && (
                                                 <button

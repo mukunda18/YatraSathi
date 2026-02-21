@@ -58,7 +58,6 @@ export async function POST(req: Request) {
     let userContext = `User Profile:
 - Name: ${user.name}
 - Email: ${user.email}
-- Phone: ${user.phone}
 - Account Type: ${user.is_driver ? "Passenger & Driver" : "Passenger"}
 - Average Rating: ${user.avg_rating}
 `;

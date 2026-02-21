@@ -10,9 +10,7 @@ export interface StopLocation extends TripLocation {
 
 export interface TripRider {
     request_id: string;
-    rider_id: string;
     rider_name: string;
-    rider_phone: string;
     pickup_address: string;
     drop_address: string;
     pickup_lat: number;
@@ -27,7 +25,7 @@ export interface TripRider {
 
 export interface TripSearchResult {
     id: string;
-    driver_user_id: string;
+    is_own_trip?: boolean;
     driver_name: string;
     driver_rating?: number;
     driver_total_ratings?: number;
@@ -65,11 +63,9 @@ export interface TripViewData {
     from_lng: number;
     to_lat: number;
     to_lng: number;
-    driver_user_id: string;
+    is_driver_viewer?: boolean;
     driver_name: string;
-    driver_phone: string;
     driver_rating: string | number;
-    driver_id: string;
     vehicle_type: string;
     vehicle_number: string;
     vehicle_info: Record<string, unknown> | null;

@@ -1,7 +1,7 @@
 "use client";
 
 import TripMap from "@/components/map/TripMap";
-import { HiClock, HiUser, HiCurrencyRupee, HiPhone, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
+import { HiClock, HiUser, HiCurrencyRupee, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
 import { useState } from "react";
 import Link from "next/link";
 import { cancelBookingAction, createRideRequestFromTripAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
@@ -301,12 +301,6 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                                         </span>
                                     </div>
                                 </div>
-                                <a
-                                    href={`tel:${currentTrip.driver_phone}`}
-                                    className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center hover:bg-emerald-500/20 transition-all shrink-0 active:scale-90"
-                                >
-                                    <HiPhone className="w-4 h-4 text-emerald-400" />
-                                </a>
                             </div>
 
                             <div className="mt-4 pt-4 border-t border-white/5">
@@ -338,12 +332,6 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                                                         <p className="text-[10px] font-bold text-slate-500">{rider.seats} Seat{rider.seats > 1 ? 's' : ''}</p>
                                                     </div>
                                                 </div>
-                                                <a
-                                                    href={`tel:${rider.rider_phone}`}
-                                                    className="w-8 h-8 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center hover:bg-emerald-500/10 transition-all text-emerald-400 active:scale-90"
-                                                >
-                                                    <HiPhone className="w-3.5 h-3.5" />
-                                                </a>
                                             </div>
 
                                             <div className="space-y-2 pt-2 border-t border-white/5">

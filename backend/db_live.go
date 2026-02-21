@@ -135,6 +135,22 @@ func getUserName(ctx context.Context, userID string) string {
 	return name
 }
 
+func getRequestIDForTripRider(ctx context.Context, tripID, riderID string) string {
+	var requestID string
+	sql := `
+		SELECT rr.id
+		FROM ride_requests rr
+		WHERE rr.trip_id = $1
+		  AND rr.rider_id = $2
+		  AND rr.status IN ('waiting', 'onboard', 'dropedoff')
+		LIMIT 1
+	`
+	if err := dbPool.QueryRow(ctx, sql, tripID, riderID).Scan(&requestID); err != nil {
+		return ""
+	}
+	return requestID
+}
+
 func startTripByDriver(ctx context.Context, tripID, userID string) (bool, string) {
 	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -313,7 +329,7 @@ func markRiderOnboardByRider(ctx context.Context, requestID, riderID string) (bo
 	}
 	hub.BroadcastToTrip(tripID, SocketResponse{
 		Event:   "rider_onboard",
-		Payload: map[string]interface{}{"tripId": tripID, "requestId": requestID, "riderId": riderID, "status": "onboard"},
+		Payload: map[string]interface{}{"tripId": tripID, "requestId": requestID, "status": "onboard"},
 	})
 	return true, tripID, ""
 }
@@ -361,7 +377,7 @@ func markRiderDroppedOffByRider(ctx context.Context, requestID, riderID string) 
 
 	hub.BroadcastToTrip(tripID, SocketResponse{
 		Event:   "rider_dropped_off",
-		Payload: map[string]interface{}{"tripId": tripID, "requestId": requestID, "riderId": riderID, "status": "dropedoff"},
+		Payload: map[string]interface{}{"tripId": tripID, "requestId": requestID, "status": "dropedoff"},
 	})
 	return true, tripID, ""
 }
@@ -375,8 +391,9 @@ func getLiveTripViewByID(ctx context.Context, tripID, userID string) (map[string
 				t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
 				ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
 				ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
-				u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, d.avg_rating as driver_rating,
-				d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
+				u.name as driver_name, d.avg_rating as driver_rating,
+				($2::uuid = u.id) as is_driver_viewer,
+				d.vehicle_type, d.vehicle_number, d.vehicle_info,
 				ST_Y(lt.current_location::geometry) as driver_current_lat,
 				ST_X(lt.current_location::geometry) as driver_current_lng,
 				lt.heading as driver_heading,
@@ -393,18 +410,21 @@ func getLiveTripViewByID(ctx context.Context, tripID, userID string) (map[string
 						ORDER BY stop_order
 					) ts
 				) as stops,
-				(
-					SELECT COALESCE(json_agg(rd), '[]')
-					FROM (
-						SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
-							   rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
-							   ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
-							   ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng
-						FROM ride_requests rr
-						JOIN users ru ON rr.rider_id = ru.id
-						WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard', 'dropedoff')
-					) rd
-				) as riders,
+				CASE
+					WHEN $2::uuid = u.id THEN (
+						SELECT COALESCE(json_agg(rd), '[]')
+						FROM (
+							SELECT rr.id as request_id, ru.name as rider_name,
+								   rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
+								   ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
+								   ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng
+							FROM ride_requests rr
+							JOIN users ru ON rr.rider_id = ru.id
+							WHERE rr.trip_id = t.id AND rr.status IN ('waiting', 'onboard', 'dropedoff')
+						) rd
+					)
+					ELSE '[]'::json
+				END as riders,
 				(
 					SELECT json_build_object(
 						'id', my_rr.id,
@@ -454,8 +474,9 @@ func getCurrentDriverLiveTripByUserID(ctx context.Context, userID string) (map[s
 				t.fare_per_seat, t.total_seats, t.available_seats, t.description, t.status as trip_status,
 				ST_Y(t.from_location::geometry) as from_lat, ST_X(t.from_location::geometry) as from_lng,
 				ST_Y(t.to_location::geometry) as to_lat, ST_X(t.to_location::geometry) as to_lng,
-				u.id as driver_user_id, u.name as driver_name, u.phone as driver_phone, d.avg_rating as driver_rating,
-				d.id as driver_id, d.vehicle_type, d.vehicle_number, d.vehicle_info,
+				u.name as driver_name, d.avg_rating as driver_rating,
+				true as is_driver_viewer,
+				d.vehicle_type, d.vehicle_number, d.vehicle_info,
 				ST_Y(lt.current_location::geometry) as driver_current_lat,
 				ST_X(lt.current_location::geometry) as driver_current_lng,
 				lt.heading as driver_heading,
@@ -475,7 +496,7 @@ func getCurrentDriverLiveTripByUserID(ctx context.Context, userID string) (map[s
 				(
 					SELECT COALESCE(json_agg(rd), '[]')
 					FROM (
-						SELECT rr.id as request_id, rr.rider_id, ru.name as rider_name, ru.phone as rider_phone,
+						SELECT rr.id as request_id, ru.name as rider_name,
 							   rr.pickup_address, rr.drop_address, rr.seats, rr.total_fare, rr.status,
 							   ST_Y(rr.pickup_location::geometry) as pickup_lat, ST_X(rr.pickup_location::geometry) as pickup_lng,
 							   ST_Y(rr.drop_location::geometry) as drop_lat, ST_X(rr.drop_location::geometry) as drop_lng,

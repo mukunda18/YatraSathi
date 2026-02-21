@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { HiArrowLeft, HiClock, HiLocationMarker, HiPhone, HiUserGroup } from "react-icons/hi";
+import { HiArrowLeft, HiClock, HiLocationMarker, HiUserGroup } from "react-icons/hi";
 import TripMap from "@/components/map/TripMap";
 import { useLiveDriverStore } from "@/store/liveDriverStore";
 import { LiveDriverTripData } from "@/store/types";
@@ -75,12 +75,12 @@ export default function LiveTripDriver() {
             if (message.event === "rider_location_updated" && typeof message.payload === "object" && message.payload) {
                 const payload = message.payload as Record<string, unknown>;
                 if (payload.tripId !== baseTrip.trip_id) return;
-                const riderId = String(payload.userId || "");
+                const requestId = String(payload.requestId || "");
                 const lat = Number(payload.lat);
                 const lng = Number(payload.lng);
-                if (!riderId || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                if (!requestId || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
                 upsertLiveRiderPosition({
-                    riderId,
+                    requestId,
                     lat,
                     lng,
                     status: String(payload.status || "online"),
@@ -258,12 +258,6 @@ export default function LiveTripDriver() {
                                     <p className="truncate text-sm font-black text-white">{rider.rider_name}</p>
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{rider.status}</p>
                                 </div>
-                                <a
-                                    href={`tel:${rider.rider_phone}`}
-                                    className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-400"
-                                >
-                                    <HiPhone className="h-4 w-4" />
-                                </a>
                             </div>
 
                             <div className="mt-3 space-y-2 text-[11px] text-slate-300">

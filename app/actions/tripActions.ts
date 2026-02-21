@@ -6,7 +6,9 @@ import {
     createRideRequest,
     createRideRequestFromTripDefaults,
     getJoinedTripsByRiderId,
-    getTripViewById,
+    getTripViewForDriverById,
+    getTripViewForRiderById,
+    isDriverViewerForTrip,
     rateDriverByRider,
     rateRiderByDriver,
     removeRiderFromTrip,
@@ -101,7 +103,6 @@ export async function createRideRequestAction(data: {
     drop_location: { lat: number; lng: number };
     drop_address: string;
     seats: number;
-    total_fare: number;
 }) {
     const { userId, error } = await getAuthenticatedUserId();
     if (error) return error;
@@ -113,9 +114,6 @@ export async function createRideRequestAction(data: {
     if (data.seats < 1) {
         return { success: false, message: "Must book at least 1 seat" };
     }
-    if (data.total_fare < 0) {
-        return { success: false, message: "Invalid fare amount" };
-    }
 
     const result = await createRideRequest({
         rider_id: userId!,
@@ -124,8 +122,7 @@ export async function createRideRequestAction(data: {
         pickup_address: data.pickup_address,
         drop_location: dropPoint,
         drop_address: data.drop_address,
-        seats: data.seats,
-        total_fare: data.total_fare
+        seats: data.seats
     });
 
     if (!result.success) {
@@ -148,7 +145,10 @@ export async function getJoinedTripsAction() {
 export async function getTripViewAction(tripId: string) {
     const { userId } = await getAuthenticatedUserId();
 
-    const trip = await getTripViewById(tripId, userId || undefined);
+    const isDriverViewer = userId ? await isDriverViewerForTrip(tripId, userId) : false;
+    const trip = isDriverViewer
+        ? await getTripViewForDriverById(tripId, userId || undefined)
+        : await getTripViewForRiderById(tripId, userId || undefined);
 
     if (!trip) {
         return { success: false, message: "Trip not found", trip: null };
@@ -230,7 +230,6 @@ export interface ExploreTrip {
     from_lng: number;
     to_lat: number;
     to_lng: number;
-    driver_user_id: string;
     driver_name: string;
     driver_rating: number;
     driver_total_ratings: number;

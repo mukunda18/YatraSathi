@@ -11,7 +11,7 @@ interface DriverPosition {
 }
 
 interface LiveRiderPosition {
-    riderId: string;
+    requestId: string;
     riderName: string;
     lat: number;
     lng: number;
@@ -104,8 +104,8 @@ export const useLiveTripStore = create<LiveTripState>((set, get) => ({
 
     upsertLiveRiderPosition: (rider) => {
         set((state) => {
-            const next = state.liveRiders.some((r) => r.riderId === rider.riderId)
-                ? state.liveRiders.map((r) => (r.riderId === rider.riderId ? rider : r))
+            const next = state.liveRiders.some((r) => r.requestId === rider.requestId)
+                ? state.liveRiders.map((r) => (r.requestId === rider.requestId ? rider : r))
                 : [...state.liveRiders, rider];
             return { liveRiders: next };
         });

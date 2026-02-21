@@ -20,8 +20,6 @@ func verifyToken(r *http.Request) (string, error) {
 	cookie, err := r.Cookie("yatrasathi")
 	if err == nil {
 		tokenString = cookie.Value
-	} else {
-		tokenString = r.URL.Query().Get("token")
 	}
 
 	if tokenString == "" {

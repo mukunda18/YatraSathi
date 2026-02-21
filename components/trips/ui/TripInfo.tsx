@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { parseWKT } from "@/utils/geo";
 import { TripSearchResult, TripLocation } from "@/store/types";
 import { useUserRidesStore } from "@/store/userRidesStore";
-import { useAuthStore } from "@/store/authStore";
 
 interface TripStopDisplay {
     address?: string;
@@ -30,7 +29,6 @@ interface TripInfoProps {
 export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: TripInfoProps) {
     const [loading, setLoading] = useState(false);
     const [seats, setSeats] = useState(1);
-    const { userId } = useAuthStore();
 
     if (!selectedTrip) return null;
 
@@ -52,7 +50,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
 
     const vehicleModel = vehicle_info?.model || vehicle_type;
     const vehicleColor = vehicle_info?.color || "";
-    const isOwnTrip = selectedTrip.driver_user_id === userId;
+    const isOwnTrip = Boolean(selectedTrip.is_own_trip);
 
     const handleJoin = async () => {
         if (!selectedTrip) return;
@@ -67,8 +65,8 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
             const startLoc = parseWKT(selectedTrip.from_loc) || pickupPoint;
             const endLoc = parseWKT(selectedTrip.to_loc) || dropPoint;
 
-            const finalPickupLoc = from ? { lat: from.lat, lng: from.lng } : (pickupPoint || startLoc);
-            const finalDropLoc = to ? { lat: to.lat, lng: to.lng } : (dropPoint || endLoc);
+            const finalPickupLoc = pickupPoint || (from ? { lat: from.lat, lng: from.lng } : startLoc);
+            const finalDropLoc = dropPoint || (to ? { lat: to.lat, lng: to.lng } : endLoc);
             const finalPickupAddr = from?.address || selectedTrip.from_address;
             const finalDropAddr = to?.address || selectedTrip.to_address;
 
@@ -85,8 +83,7 @@ export default function TripInfo({ selectedTrip, setSelectedTrip, from, to }: Tr
                 pickup_address: finalPickupAddr,
                 drop_location: finalDropLoc,
                 drop_address: finalDropAddr,
-                seats: seats,
-                total_fare: selectedTrip.fare_per_seat * seats
+                seats: seats
             });
 
             if (result.success) {

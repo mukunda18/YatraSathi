@@ -15,10 +15,9 @@ import { toTripViewData } from "@/utils/tripParsers";
 
 interface LiveTripClientProps {
     tripId: string;
-    viewerUserId: string;
 }
 
-export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientProps) {
+export default function LiveTripClient({ tripId }: LiveTripClientProps) {
     const router = useRouter();
     const [baseTrip, setBaseTrip] = useState<TripViewData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -64,8 +63,8 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
 
     const isDriver = useMemo(() => {
         if (!baseTrip) return false;
-        return baseTrip.driver_user_id === viewerUserId;
-    }, [baseTrip, viewerUserId]);
+        return Boolean(baseTrip.is_driver_viewer);
+    }, [baseTrip]);
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
     if (!wsUrl) {
@@ -84,7 +83,8 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
             if (message.event === "rider_dropped_off" && typeof message.payload === "object" && message.payload) {
                 const payload = message.payload as Record<string, unknown>;
                 if (payload.tripId !== baseTrip.trip_id) return;
-                if (String(payload.riderId || "") !== viewerUserId) return;
+                if (isDriver) return;
+                if (String(payload.requestId || "") !== String(baseTrip.my_request?.id || "")) return;
                 toast.success("You are now dropped off.");
                 router.replace(`/trips/${baseTrip.trip_id}`);
                 return;
@@ -92,7 +92,6 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
             if (message.event === "driver_location_updated" && typeof message.payload === "object" && message.payload) {
                 const payload = message.payload as Record<string, unknown>;
                 if (payload.tripId !== baseTrip.trip_id) return;
-                if (payload.userId !== baseTrip.driver_user_id) return;
                 const lat = Number(payload.lat);
                 const lng = Number(payload.lng);
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -107,20 +106,22 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
             }
 
             if (message.event === "rider_location_updated" && typeof message.payload === "object" && message.payload) {
+                if (!isDriver) return;
                 const payload = message.payload as Record<string, unknown>;
                 if (payload.tripId !== baseTrip.trip_id) return;
+                const requestId = String(payload.requestId || "");
                 const lat = Number(payload.lat);
                 const lng = Number(payload.lng);
-                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                if (!requestId || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
                 upsertLiveRiderPosition({
-                    riderId: String(payload.userId || ""),
+                    requestId,
                     riderName: String(payload.riderName || "Rider"),
                     lat,
                     lng,
                     status: String(payload.status || "online"),
                 });
             }
-        },
+        }
     });
 
     useEffect(() => {
@@ -230,7 +231,7 @@ export default function LiveTripClient({ tripId, viewerUserId }: LiveTripClientP
                     completedRoute={completedRoute}
                     remainingRoute={remainingRoute}
                     liveRiders={liveRiders.map((rider) => ({
-                        request_id: rider.riderId,
+                        request_id: rider.requestId,
                         rider_name: rider.riderName,
                         lat: rider.lat,
                         lng: rider.lng,

@@ -27,7 +27,7 @@ export default async function TripViewPage({ params }: TripPageProps) {
         <main className="min-h-screen bg-slate-950">
             <TripView
                 initialTrip={trip}
-                isDriver={trip.driver_user_id === user.id}
+                isDriver={Boolean(trip.is_driver_viewer)}
             />
         </main>
     );

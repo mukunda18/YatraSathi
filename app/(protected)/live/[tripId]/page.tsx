@@ -22,7 +22,7 @@ export default async function LiveTripPage({ params }: LiveTripPageProps) {
 
     return (
         <main className="min-h-screen bg-slate-950">
-            <LiveTripClient tripId={tripId} viewerUserId={user.id} />
+            <LiveTripClient tripId={tripId} />
         </main>
     );
 }
