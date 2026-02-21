@@ -65,11 +65,11 @@ The application is fully deployed and live at [https://yatra-sathi-black.vercel.
 
 Key technical accomplishments of the project include:
 
-- Geospatial trip matching using **PostGIS ST_DWithin** and **GIST spatial indexes** for efficient proximity queries across large trip datasets
+- Geospatial trip matching using **PostGIS ST_Intersects** against route buffers for efficient pickup/dropoff proximity matching along the entire trip path
 - A trip-specific **WebSocket Hub** pattern in Go that broadcasts driver location updates only to passengers participating in that specific trip
-- Fully custom **JWT-based authentication** with HTTP-only cookie sessions and **Next.js middleware**-enforced route protection — no third-party auth providers
+- Fully custom **JWT-based authentication** with HTTP-only cookie sessions and **Next.js middleware**-enforced route protection (via route groupings and server-side session validation)
 - An integrated **AI chatbot** powered by **Google Gemini** for in-app trip guidance and travel assistance
-- A normalized relational schema designed to **Third Normal Form (3NF)** with referential integrity, domain constraints, and strategic indexing across all entities
+- A normalized relational schema designed with PostGIS spatial types, transactions, and strategic indexing across all entities
 
 ---
 
@@ -241,17 +241,17 @@ All primary keys use **UUID** values generated at the database level for globall
 
 Every origin, destination, and stop location is stored as a `GEOGRAPHY(POINT, 4326)` column. This type choice over the simpler `POINT` type is deliberate: geography-aware calculations account for the Earth's curvature, producing accurate metric distances at any scale.
 
-### 8.2 ST_DWithin — Proximity-Based Trip Search
+### 8.2 Proximity-Based Trip Search
 
-The **Explore** page uses `ST_DWithin` to find all trips whose origin falls within a configurable radius (default 5 kilometres) of the passenger's current location. `ST_DWithin` is specifically designed to be **index-aware** — unlike filtering on `ST_Distance`, it leverages the **GIST spatial index** to prune the candidate set geometrically before computing exact distances, making the query dramatically faster at scale.
+The **Explore** page uses `ST_Intersects` against a pre-calculated 100-meter buffer (`buffer_100`) of the trip's route to find all trips that pass near the passenger's requested pickup and dropoff locations. This route-aware matching is more powerful than simple point-to-point proximity as it allows passengers to join trips that are already passing through their area.
 
-### 8.3 ST_Distance — Fare Estimation
+### 8.3 Route Logic & Sequencing
 
-At trip creation, `ST_Distance` computes the geodesic (great-circle) distance in meters between the trip's origin and destination coordinates. The backend service converts this to kilometres and applies a configurable per-kilometre rate to produce a suggested `fare_per_seat` value, which the driver can adjust before publishing the trip.
+To ensure valid trips, the system verifies that the pickup point occurs before the dropoff point along the driver's route using `ST_LineLocatePoint`. This prevents surfacing trips that are traveling in the opposite direction or have already passed the pickup point.
 
 ### 8.4 GIST Index — Spatial Indexing
 
-Without spatial indexing, every `ST_DWithin` call would require a full sequential scan of the trips table — an O(n) operation that degrades linearly with data volume. PostgreSQL's **Generalized Search Tree (GIST)** index uses an R-tree bounding-box hierarchy to geometrically partition the data, allowing the query planner to skip entire geographic regions irrelevant to the search. GIST indexes are maintained on the origin location, destination location, and trip stop location columns.
+Without spatial indexing, geographic queries would require full sequential scans. PostgreSQL's **Generalized Search Tree (GIST)** indexes are maintained on the route geometry, buffer, start/end points, and trip locations to ensure that spatial lookups remain performant even as the dataset grows.
 
 **Performance impact on 100,000 trip rows:**
 
@@ -493,14 +493,13 @@ A dedicated page showing all available upcoming trips as cards. Passengers searc
 | Route | Access | Description |
 |---|---|---|
 | `/` | Public | Home — Hero, Features, Trip Sidebar, AI Chatbot |
-| `/explore` | Public | Browse and search all upcoming trips |
-| `/trips/[id]` | Public | Trip detail — route map, join request |
 | `/login` | Public | Login page |
 | `/signup` | Public | Sign up page |
-| `/about` | Public | About the platform |
 | `/help` | Public | Help & FAQ |
 | `/privacy` | Public | Privacy Policy |
 | `/terms` | Public | Terms of Service |
+| `/explore` | Protected | Browse and search all upcoming trips |
+| `/trips/[id]` | Protected | Trip detail — route map, join request |
 | `/trips/new` | Protected | Create a new trip (drivers only) |
 | `/driver/register` | Protected | Register as a driver |
 | `/driver/dashboard` | Protected | Manage trips and ride requests |
@@ -515,69 +514,57 @@ A dedicated page showing all available upcoming trips as cards. Passengers searc
 YatraSathi/
 │
 ├── app/                        # Next.js App Router
-│   ├── (home)/                 # Public pages: landing, explore, about, help
-│   ├── (auth)/                 # Login & Signup pages
+│   ├── (home)/                 # Public pages: landing, help, privacy
+│   ├── (auth)/                 # Login, Signup, Reset Password
 │   ├── (protected)/            # Auth-gated pages
 │   │   ├── trips/              # Trip detail, creation, join
 │   │   ├── driver/             # Driver dashboard, register, live session
+│   │   ├── explore/            # Trip discovery and search
 │   │   └── live/               # Passenger live tracking view
-│   ├── api/                    # REST API route handlers
-│   │   ├── auth/               # Login, signup, logout, session
-│   │   ├── trips/              # Trip CRUD and request management
-│   │   ├── driver/             # Driver registration and profile
-│   │   └── ratings/            # Rating submission
+│   ├── api/                    # API route handlers
+│   │   ├── auth/               # Session management
+│   │   └── chat/               # AI Chatbot endpoint
 │   └── actions/                # Next.js Server Actions
-│       ├── auth.ts
-│       ├── trips.ts
-│       ├── driver.ts
-│       └── requests.ts
+│       ├── authActions.ts      # Authentication & session logic
+│       ├── driverActions.ts    # Driver profile & vehicle management
+│       ├── tripActions.ts      # Trip CRUD, requests, and ratings
+│       └── searchActions.ts    # Geospatial search logic
 │
 ├── components/                 # Reusable React components
 │   ├── layout/                 # Navbar, UserDropdown
-│   ├── landing/                # Hero, Features, Footer, TripsSidebar
+│   ├── landing/                # Hero, Features, Footer
 │   ├── trips/                  # TripCard, TripForm, TripDetail
 │   ├── driver/                 # DriverDashboard, LiveControls
-│   ├── explore/                # SearchBar, VehicleFilter, TripGrid
+│   ├── explore/                # SearchBar, VehicleFilter
 │   ├── map/                    # MapLibre components, RouteLayer
 │   ├── live/                   # DriverMarker, LiveMap
 │   └── ChatBot.tsx             # Google Gemini AI chatbot
 │
 ├── store/                      # Zustand global state stores
-│   ├── authStore.ts            # User session and JWT state
-│   ├── tripStore.ts            # Active trip and search results
-│   ├── liveStore.ts            # Driver live location state
-│   └── uiStore.ts              # Modal, loading, sidebar state
+│   ├── authStore.ts            # User session state
+│   ├── liveDriverStore.ts      # Driver location state
+│   ├── liveTripStore.ts        # Active trip tracking state
+│   └── uiStore.ts              # Modal and sidebar state
 │
-├── lib/                        # Core server utilities
-│   ├── jwt.ts                  # JWT sign and verify helpers
-│   ├── auth.ts                 # Session creation and cookie management
-│   └── db.ts                   # pg pool singleton
+├── db/                         # Database layer
+│   ├── schema.sql              # PostgreSQL schema & PostGIS setup
+│   ├── db.ts                   # Core database queries & logic
+│   └── index.ts                # pg pool configuration
 │
 ├── hooks/                      # Custom React hooks
-│   ├── useTripTracking.ts      # WebSocket connection for live tracking
-│   └── useGeolocation.ts       # Browser Geolocation API wrapper
+│   └── useSocket.ts            # WebSocket connection for live tracking
 │
 ├── utils/                      # Shared utility functions
-│   ├── api.ts                  # Fetch wrapper with auth headers
 │   ├── geo.ts                  # Coordinate conversion helpers
-│   └── fare.ts                 # Distance-based fare calculation
+│   ├── liveRoute.ts            # Route animation logic
+│   └── validation.ts           # Schema validation
 │
 ├── backend/                    # Go realtime WebSocket server
-│   ├── main.go                 # Server entrypoint, router, CORS
-│   ├── ws/
-│   │   ├── hub.go              # Hub: trip-room management and broadcast
-│   │   └── client.go           # Client: per-connection read/write pumps
-│   ├── middleware/
-│   │   └── auth.go             # JWT verification for WS handshake
-│   └── db/
-│       └── pool.go             # pgxpool initialization
+│   ├── main.go                 # Server entrypoint and router
+│   ├── ws_handlers.go          # WebSocket connection handling
+│   ├── db_live.go              # Realtime database interactions
+│   └── http_api.go             # Helper HTTP endpoints
 │
-├── db/
-│   └── schema.sql              # Full PostgreSQL schema with indexes, triggers
-│
-├── images/                     # Project screenshots and diagrams
-├── middleware.ts               # Next.js route protection middleware
-├── .env.example                # Environment variable template
 └── README.md
 ```
 
