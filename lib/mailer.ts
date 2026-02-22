@@ -40,7 +40,7 @@ export async function sendPasswordResetEmail(
 <body>
   <div class="wrapper">
     <div class="card">
-      <img class="logo" src="/logo.png" alt="YatraSathi logo" />
+      <img class="logo" src="${process.env.NEXT_PUBLIC_APP_URL || 'https://yatra-sathi-black.vercel.app'}/logo.png" alt="YatraSathi logo" />
       <h1>Reset Your Password</h1>
       <p>Hi ${name},<br/>Someone (hopefully you) requested a password reset for your YatraSathi account.</p>
       <a href="${resetUrl}" class="btn">Reset Password</a>

@@ -172,7 +172,7 @@ export async function forgotPasswordAction(email: string) {
 
         await createPasswordResetToken(user.id, token, expiresAt);
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yatra-sathi-black.vercel.app";
         const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
         await sendPasswordResetEmail(user.email, user.name, resetUrl);

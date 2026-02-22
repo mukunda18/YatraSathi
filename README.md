@@ -630,6 +630,7 @@ The `.env.local` file in the project root configures the **Next.js** application
 | `GEMINI_API_KEY` | Google Gemini API key for the AI chatbot |
 | `NEXT_PUBLIC_WS_URL` | Go WebSocket server URL (e.g. `ws://localhost:8080`) |
 | `FRONTEND_ORIGIN` | Frontend origin URL used by the Go server for CORS |
+| `NEXT_PUBLIC_APP_URL` | Base URL of the application (e.g. `https://yatra-sathi-black.vercel.app`) |
 
 ### Backend
 
