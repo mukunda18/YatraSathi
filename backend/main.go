@@ -12,9 +12,7 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load("../.env.local"); err != nil {
-		log.Println("Warning: could not load ../.env.local, using system env vars")
-	}
+	_ = godotenv.Load("../.env.production")
 
 	// Validate required environment variables
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -45,6 +43,7 @@ func main() {
 	log.Println("Database connection verified")
 
 	setupRoutes()
+
 	log.Println("Starting Yatra Backend on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
