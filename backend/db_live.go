@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -159,23 +160,27 @@ func startTripByDriver(ctx context.Context, tripID, userID string) (bool, string
 	defer tx.Rollback(ctx)
 
 	var driverID string
-	var travelDate string
+	var travelDate time.Time
+	var dbNow time.Time
 	var tripStatus string
 	var fromLocation string
 	var routeID *string
 	tripSQL := `
-		SELECT d.id, t.travel_date::text, t.status, ST_AsText(t.from_location) as from_location_wkt, t.route_id
+		SELECT d.id, t.travel_date, t.status, ST_AsText(t.from_location) as from_location_wkt, t.route_id, now()
 		FROM trips t
 		JOIN drivers d ON d.id = t.driver_id
 		WHERE t.id = $1 AND d.user_id = $2
 		FOR UPDATE OF t
 	`
-	if err := tx.QueryRow(ctx, tripSQL, tripID, userID).Scan(&driverID, &travelDate, &tripStatus, &fromLocation, &routeID); err != nil {
+	if err := tx.QueryRow(ctx, tripSQL, tripID, userID).Scan(&driverID, &travelDate, &tripStatus, &fromLocation, &routeID, &dbNow); err != nil {
 		return false, "Trip not found or unauthorized."
 	}
 
 	if tripStatus != "scheduled" {
 		return false, "Only scheduled trips can be started."
+	}
+	if dbNow.Before(travelDate) {
+		return false, "Trip can only be started at or after its scheduled departure time."
 	}
 	if routeID == nil || *routeID == "" {
 		return false, "Trip route is missing. Please recreate the trip."
@@ -189,8 +194,19 @@ func startTripByDriver(ctx context.Context, tripID, userID string) (bool, string
 		return false, "You already have an ongoing trip."
 	}
 
-	if _, err := tx.Exec(ctx, `UPDATE trips SET status = 'ongoing', updated_at = now() WHERE id = $1 AND driver_id = $2`, tripID, driverID); err != nil {
+	tag, err := tx.Exec(ctx, `
+		UPDATE trips
+		SET status = 'ongoing', updated_at = now()
+		WHERE id = $1
+		  AND driver_id = $2
+		  AND status = 'scheduled'
+		  AND travel_date <= now()
+	`, tripID, driverID)
+	if err != nil {
 		return false, "Failed to start trip."
+	}
+	if tag.RowsAffected() == 0 {
+		return false, "Trip can only be started at or after its scheduled departure time."
 	}
 
 	if _, err := tx.Exec(ctx, `DELETE FROM live_trips WHERE driver_id = $1`, driverID); err != nil {
@@ -222,7 +238,6 @@ func startTripByDriver(ctx context.Context, tripID, userID string) (bool, string
 		Payload: map[string]interface{}{"tripId": tripID, "status": "ongoing"},
 	})
 
-	_ = travelDate // reserved for future time-window validation
 	return true, ""
 }
 

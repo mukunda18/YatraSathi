@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cancelTripAction } from "@/app/actions/driverActions";
 import { cancelBookingAction } from "@/app/actions/tripActions";
 import { HiX, HiChevronDown, HiChevronUp, HiLocationMarker, HiClock, HiCurrencyRupee, HiUsers, HiExclamation } from "react-icons/hi";
@@ -47,6 +47,26 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
     const [removeReason, setRemoveReason] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTimeMs(Date.now());
+        }, 30000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const tripStartTimeMs = new Date(trip.travel_date).getTime();
+    const hasValidTripStart = Number.isFinite(tripStartTimeMs);
+    const canStartTrip = hasValidTripStart && currentTimeMs >= tripStartTimeMs;
+    const startsAtLabel = hasValidTripStart
+        ? new Date(tripStartTimeMs).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        })
+        : "scheduled time";
 
     const getRequestId = (request: DriverTripRequest) => request.request_id || request.id || "";
 
@@ -77,6 +97,10 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
     };
 
     const handleStartTrip = async () => {
+        if (!canStartTrip) {
+            toast.error(`Trip can go live at ${startsAtLabel}`);
+            return;
+        }
         setIsLoading(true);
         try {
             const result = await postGoApi(`/api/trips/${trip.trip_id}/start`);
@@ -155,9 +179,10 @@ export default function DriverTripCard({ trip, onUpdate }: TripCardProps) {
                             {trip.trip_status === 'scheduled' && (
                                 <button
                                     onClick={handleStartTrip}
-                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                                    disabled={!canStartTrip}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
                                 >
-                                    Start Trip
+                                    {canStartTrip ? "Start Trip" : "Not Yet"}
                                 </button>
                             )}
                             {trip.trip_status === 'ongoing' && (

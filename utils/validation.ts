@@ -107,10 +107,10 @@ export const validateTrip = (data: unknown): ValidationResult => {
         errors.date = "Travel date is required";
     } else {
         const travelDate = new Date(String(travelDateRaw));
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        if (travelDate < now) {
-            errors.date = "Travel date must be today or in the future";
+        if (Number.isNaN(travelDate.getTime())) {
+            errors.date = "Travel date is invalid";
+        } else if (travelDate.getTime() < Date.now()) {
+            errors.date = "Travel date and time must be in the future";
         }
     }
 

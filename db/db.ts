@@ -398,6 +398,7 @@ export const searchTrips = async (from_location: string, to_location: string, vi
 type RideRequestFailureCode =
     | "trip_not_found"
     | "trip_not_scheduled"
+    | "trip_departed"
     | "own_trip"
     | "not_enough_seats"
     | "route_mismatch"
@@ -409,6 +410,8 @@ const toRideRequestErrorMessage = (code?: RideRequestFailureCode | null): string
             return "Trip not found";
         case "trip_not_scheduled":
             return "Only scheduled trips can be joined";
+        case "trip_departed":
+            return "This trip has already reached its departure time.";
         case "own_trip":
             return "You cannot join your own trip.";
         case "not_enough_seats":
@@ -437,6 +440,7 @@ const createRideRequestAtomic = async (data: {
                 t.id AS trip_id,
                 t.route_id,
                 t.status AS trip_status,
+                t.travel_date AS trip_travel_date,
                 t.available_seats,
                 t.fare_per_seat,
                 t.from_location,
@@ -454,6 +458,7 @@ const createRideRequestAtomic = async (data: {
                 td.trip_id,
                 td.route_id,
                 td.trip_status,
+                td.trip_travel_date,
                 td.available_seats,
                 td.driver_user_id,
                 COALESCE(ST_GeogFromText($4), td.from_location) AS requested_pickup_location,
@@ -468,6 +473,7 @@ const createRideRequestAtomic = async (data: {
                 ri.trip_id,
                 ri.route_id,
                 ri.trip_status,
+                ri.trip_travel_date,
                 ri.available_seats,
                 ri.driver_user_id,
                 ri.requested_pickup_location,
@@ -491,6 +497,7 @@ const createRideRequestAtomic = async (data: {
                 CASE
                     WHEN NOT EXISTS (SELECT 1 FROM trip_data) THEN 'trip_not_found'
                     WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.trip_status <> 'scheduled') THEN 'trip_not_scheduled'
+                    WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.trip_travel_date <= now()) THEN 'trip_departed'
                     WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.driver_user_id = $1) THEN 'own_trip'
                     WHEN EXISTS (SELECT 1 FROM snapped_input si WHERE si.available_seats < $3) THEN 'not_enough_seats'
                     WHEN EXISTS (

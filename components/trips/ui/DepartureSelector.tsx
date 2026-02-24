@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface DepartureSelectorProps {
     travelYear: string;
     travelMonth: string;
@@ -20,18 +22,31 @@ export default function DepartureSelector({
     travelHour, setTravelHour,
     travelMinute, setTravelMinute
 }: DepartureSelectorProps) {
+    const currentYear = new Date().getFullYear();
+    const yearOptions = [currentYear, currentYear + 1, currentYear + 2];
+    const selectedYear = Number(travelYear) || currentYear;
+    const selectedMonth = Number(travelMonth) || 1;
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+    const selectedDay = Number(travelDay) || 1;
+
+    useEffect(() => {
+        if (selectedDay > daysInMonth) {
+            setTravelDay(daysInMonth.toString().padStart(2, "0"));
+        }
+    }, [selectedDay, daysInMonth, setTravelDay]);
+
     return (
         <div className="space-y-1.5">
             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Departure</label>
             <div className="grid grid-cols-3 gap-1.5">
                 <select value={travelYear} onChange={(e) => setTravelYear(e.target.value)} className="bg-slate-900/40 border border-white/5 rounded-xl px-2 py-2 text-[10px] text-white outline-none focus:border-indigo-500/50 focus:bg-slate-900/80 transition-all">
-                    {[2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+                    {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
                 <select value={travelMonth} onChange={(e) => setTravelMonth(e.target.value)} className="bg-slate-900/40 border border-white/5 rounded-xl px-2 py-2 text-[10px] text-white outline-none focus:border-indigo-500/50 focus:bg-slate-900/80 transition-all">
                     {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => <option key={m} value={m}>{new Date(2000, parseInt(m) - 1).toLocaleString('default', { month: 'short' })}</option>)}
                 </select>
                 <select value={travelDay} onChange={(e) => setTravelDay(e.target.value)} className="bg-slate-900/40 border border-white/5 rounded-xl px-2 py-2 text-[10px] text-white outline-none focus:border-indigo-500/50 focus:bg-slate-900/80 transition-all">
-                    {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
+                    {Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
             </div>
             <div className="flex items-center gap-1.5">

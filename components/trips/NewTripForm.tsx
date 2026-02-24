@@ -163,7 +163,31 @@ export default function NewTripForm() {
             return;
         }
 
-        const travelDate = `${travelYear}-${travelMonth}-${travelDay}T${travelHour}:${travelMinute}:00`;
+        const yearNum = Number(travelYear);
+        const monthNum = Number(travelMonth);
+        const dayNum = Number(travelDay);
+        const hourNum = Number(travelHour);
+        const minuteNum = Number(travelMinute);
+        const travelDate = new Date(yearNum, monthNum - 1, dayNum, hourNum, minuteNum, 0, 0);
+
+        if (
+            Number.isNaN(travelDate.getTime()) ||
+            travelDate.getFullYear() !== yearNum ||
+            travelDate.getMonth() !== monthNum - 1 ||
+            travelDate.getDate() !== dayNum ||
+            travelDate.getHours() !== hourNum ||
+            travelDate.getMinutes() !== minuteNum
+        ) {
+            toast.error("Please choose a valid travel date and time.");
+            return;
+        }
+
+        if (travelDate.getTime() < Date.now()) {
+            toast.error("Travel date and time must be in the future.");
+            return;
+        }
+
+        const travelDateIso = travelDate.toISOString();
         setLoading(true);
 
         try {
@@ -172,7 +196,7 @@ export default function NewTripForm() {
                 from_address: from!.address,
                 to_location: { lat: to!.lat, lng: to!.lng },
                 to_address: to!.address,
-                travel_date: travelDate,
+                travel_date: travelDateIso,
                 fare_per_seat: Number(fare),
                 total_seats: Number(seats),
                 description,

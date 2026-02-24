@@ -2,7 +2,7 @@
 
 import TripMap from "@/components/map/TripMap";
 import { HiClock, HiUser, HiCurrencyRupee, HiStar, HiTruck, HiXCircle, HiUserGroup, HiLocationMarker, HiExclamation, HiStatusOnline } from "react-icons/hi";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cancelBookingAction, createRideRequestFromTripAction, rateDriverForCompletedTripAction, rateRiderForCompletedTripAction } from "@/app/actions/tripActions";
 import { cancelTripAction } from "@/app/actions/driverActions";
@@ -36,6 +36,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     const [driverRatings, setDriverRatings] = useState<Record<string, number>>({});
     const [driverComments, setDriverComments] = useState<Record<string, string>>({});
     const [ratingRiderRequestId, setRatingRiderRequestId] = useState<string | null>(null);
+    const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
     const [ratedRiderByRequest, setRatedRiderByRequest] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
         currentTrip.riders?.forEach((rider) => {
@@ -43,6 +44,26 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
         });
         return initial;
     });
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTimeMs(Date.now());
+        }, 30000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const tripStartTimeMs = new Date(currentTrip.travel_date).getTime();
+    const hasValidTripStart = Number.isFinite(tripStartTimeMs);
+    const canStartTrip = hasValidTripStart && currentTimeMs >= tripStartTimeMs;
+    const canJoinBeforeDeparture = hasValidTripStart && currentTimeMs < tripStartTimeMs;
+    const scheduledAtLabel = hasValidTripStart
+        ? new Date(tripStartTimeMs).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        })
+        : "scheduled time";
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString("en-US", {
@@ -106,6 +127,10 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
     };
 
     const handleStartTrip = async () => {
+        if (!canStartTrip) {
+            toast.error(`Trip can go live at ${scheduledAtLabel}`);
+            return;
+        }
         setIsStatusLoading(true);
         try {
             const result = await postGoApi(`/api/trips/${currentTrip.trip_id}/start`);
@@ -164,6 +189,10 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
         if (isDriver || currentTrip.my_request) return;
         if (currentTrip.trip_status !== "scheduled") {
             toast.error("Only scheduled trips can be joined.");
+            return;
+        }
+        if (!canJoinBeforeDeparture) {
+            toast.error("This trip has reached its departure time.");
             return;
         }
         if (currentTrip.available_seats <= 0) {
@@ -500,7 +529,7 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                                 <button
                                     type="button"
                                     onClick={handleJoinTrip}
-                                    disabled={joining || currentTrip.available_seats === 0 || currentTrip.trip_status !== "scheduled"}
+                                    disabled={joining || currentTrip.available_seats === 0 || currentTrip.trip_status !== "scheduled" || !canJoinBeforeDeparture}
                                     className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     {joining ? (
@@ -509,6 +538,8 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                                         "Trip Unavailable"
                                     ) : currentTrip.available_seats === 0 ? (
                                         "No Seats Available"
+                                    ) : !canJoinBeforeDeparture ? (
+                                        "Departure Closed"
                                     ) : (
                                         "Request to Join"
                                     )}
@@ -519,11 +550,13 @@ export default function TripViewClient({ initialTrip, isDriver = false }: TripVi
                         {isDriver && currentTrip.trip_status === 'scheduled' && (
                             <button
                                 onClick={handleStartTrip}
-                                disabled={isStatusLoading}
-                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-2"
+                                disabled={isStatusLoading || !canStartTrip}
+                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 disabled:shadow-none active:scale-95 flex items-center justify-center gap-2"
                             >
                                 {isStatusLoading ? (
                                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                ) : !canStartTrip ? (
+                                    `Starts ${scheduledAtLabel}`
                                 ) : (
                                     "Start Trip"
                                 )}
