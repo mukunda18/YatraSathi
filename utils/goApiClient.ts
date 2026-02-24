@@ -8,16 +8,14 @@ export type GoApiJSONResult<T> = GoApiResult & {
     trip?: T | null;
 };
 
-const goBackendUrl = process.env.NEXT_PUBLIC_GO_BACKEND_URL;
-if (!goBackendUrl) {
-    throw new Error("NEXT_PUBLIC_GO_BACKEND_URL environment variable is required");
-}
-
-const getGoBackendUrl = () => goBackendUrl;
+const buildProxyUrl = (path: string) => {
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `/api/go${normalizedPath}`;
+};
 
 export async function postGoApi(path: string): Promise<GoApiResult> {
     try {
-        const response = await fetch(`${getGoBackendUrl()}${path}`, {
+        const response = await fetch(buildProxyUrl(path), {
             method: "POST",
             credentials: "include",
         });
@@ -34,7 +32,7 @@ export async function postGoApi(path: string): Promise<GoApiResult> {
 
 export async function getGoApi<T>(path: string): Promise<GoApiJSONResult<T>> {
     try {
-        const response = await fetch(`${getGoBackendUrl()}${path}`, {
+        const response = await fetch(buildProxyUrl(path), {
             method: "GET",
             credentials: "include",
         });
